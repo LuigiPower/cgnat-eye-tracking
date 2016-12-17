@@ -71,7 +71,7 @@ classdef SupportFunctions
         %% getCenter
         % get the center point of the bounding box
         function[point] = getCenter(bbox)
-            point = [(bbox(1, 1) + bbox(1, 3) / 2) (bbox(1, 2) + bbox(1, 4) / 2)];
+            point = [double((bbox(1, 1) + bbox(1, 3) / 2)) double((bbox(1, 2) + bbox(1, 4) / 2))];
         end
     end
 end

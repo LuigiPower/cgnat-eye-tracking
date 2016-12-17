@@ -81,7 +81,7 @@ points = points.Location;
 initialize(pointTracker, points, videoFrame);
 
 %% Initialize a Video Player to Display the Results
-% Create a video player object for displaying video frames.
+% Create a video pl ayer object for displaying video frames.
 videoPlayer  = vision.VideoPlayer('Position',...
     [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30]);
 
