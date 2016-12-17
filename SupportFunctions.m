@@ -25,14 +25,14 @@ classdef SupportFunctions
         
         %% removeNonIntersecting
         % Removes all non intersecting bounding boxes from first argument
-        function[boxes] = removeNonIntersecting(bboxes1, bboxes2)
+        function[boxes] = removeNonIntersecting(bboxes1, bboxes2, threshold)
             [n1, m1] = size(bboxes1);
             [n2, ~] = size(bboxes2);
             boxes = int16.empty(0, m1);
             for i = 1:n1
                 for j = 1:n2
                     intersection = bboxOverlapRatio(bboxes1(i, :), bboxes2(j, :));
-                    if(intersection > 0)
+                    if(intersection > threshold)
                         boxes = [boxes;bboxes1(i, :)];
                         %boxes(top, :) = bboxes1(i, :);
                     end

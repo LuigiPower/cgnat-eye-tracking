@@ -3,6 +3,7 @@ clear; close all; clc;
 %% Load Video file
 videoFileReader = vision.VideoFileReader('mds_project_mad.mov');
 videoFrame      = step(videoFileReader);
+% TODO if we do this on frame 4, nothing works (left eye is wrooong)
 
 faceDetector = vision.CascadeObjectDetector();
 eyeDetector = vision.CascadeObjectDetector('EyePairSmall', 'UseROI', true);
@@ -25,9 +26,10 @@ rightEyes = rightEyeDetector(videoFrame, face_of_interest);
 %% Need some processing to find the correct Left Eye and Right Eye
 % by using the "eyes" Bounding Box, and then picking the best box
 [eyesnum, ~] = size(eyes);
+threshold = 0.1;
 if(eyesnum > 0)
-    leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes);
-    rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes);
+    leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
+    rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
 end
 
 leftEye = SupportFunctions.getRightMost(leftEyes);
@@ -130,7 +132,7 @@ figure, imshow(pixel_labels, []), title('image labeled by cluster index');
 
 radiis = [];
 maxcircle = [0 0];
-maxradii = 0.0;
+maxradii = 0;
 maxcluster = 1;
 
 leftEyeImageGSShow = leftEyeImageGS;
@@ -138,7 +140,7 @@ for i = 1:10
     leftEyeImageGSShow = insertMarker(leftEyeImageGSShow, [centers(i, 2) centers(i, 1)], '+', 'Color', 'red');
     
     
-    [circleCenters, radii, metric] = imfindcircles(cluster_images(:, :, i), [1 m]);
+    [circleCenters, radii, metric] = imfindcircles(cluster_images(:, :, i), uint16([m/18 m/6]));
     [nc, mc] = size(circleCenters);
     if(nc > 0)
         %figure; imshow(cluster_images(:, :, i)); title('Detected face');
@@ -159,6 +161,7 @@ viscircles(maxcircle, maxradii, 'EdgeColor', 'r');
 leftEyeImageGSShow = insertMarker(leftEyeImageGSShow, [m/2 n/2], '+', 'Color', 'green');
 figure; imshow(leftEyeImageGSShow); title('Clustered');
 
+leftEye = double(leftEye);
 leftEyePupil = leftEye(1, 1:2) + maxcircle;
 
 %% Draw the returned bounding box around the detected face.
@@ -230,15 +233,15 @@ while ~isDone(videoFileReader)
         
         % Apply the transformation to the bounding box points
         bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
-        bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
+        %bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
         
         % Insert a bounding box around the object being tracked
         bboxPolygonLeft = reshape(bboxPointsLeft', 1, []);
-        bboxPolygonRight = reshape(bboxPointsRight', 1, []);
+        %bboxPolygonRight = reshape(bboxPointsRight', 1, []);
         videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonLeft, ...
             'LineWidth', 2);
-        videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonRight, ...
-            'LineWidth', 2);
+        %videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonRight, ...
+        %    'LineWidth', 2);
                 
         % Display tracked points
         videoFrame = insertMarker(videoFrame, visiblePoints, '+', ...
