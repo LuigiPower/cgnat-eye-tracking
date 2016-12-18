@@ -6,10 +6,11 @@ classdef DetectionHelper
             % Creates 3 channel gray scale
             %   @param image image to convert
             
-            imageGS = rgb2gray(image);
+            imageGS = imadjust(rgb2gray(image), [0.1 0.2], [0 1.0]);
             image(:, :, 1) = imageGS;
             image(:, :, 2) = imageGS;
             image(:, :, 3) = imageGS;
+            figure, imshow(imageGS), title('Adjusted GS');
         end
         
         %% Clustering
@@ -30,7 +31,7 @@ classdef DetectionHelper
 
             % repeat the clustering 3 times to avoid local minima
             [cluster_idx, cluster_center] = kmeans(ab, nColors, 'distance', ...
-                                                       'sqEuclidean', 'Replicates', 3);
+                                                       'sqEuclidean', 'Replicates', 5);
 
             pixel_labels = reshape(cluster_idx, nrows, ncols);
         end
@@ -70,6 +71,41 @@ classdef DetectionHelper
         end
         
         %% Eye finding
+        function[maxcircle, maxradius, maxcluster] = findMaxRegionpropCluster(cluster_images, lbradius, ubradius)
+            % findMaxCircleCluster
+            % Finds the biggest circle in the given images, and returns
+            % it with the index of the related image
+            %   @param cluster_images images to check
+            %   @param lbradius Radius Lower Bound
+            %   @param ubradius Radius Upper Bound
+            
+            image_count = size(cluster_images, 3);
+            maxcircle = [0 0];
+            maxradius = 0;
+            maxcluster = 1;
+
+            for i = 1:image_count
+                [w, h] = size(cluster_images(:, :, i));
+                %padding = h/4;
+                padding = 0;
+                searching = imcrop(cluster_images(:, :, i), [padding padding (w-padding) (h-padding)]);
+                stats = regionprops('table', searching, 'Centroid',...
+                                    'MajorAxisLength', 'MinorAxisLength');
+                circleCenters = stats.Centroid;
+                diameters = mean([stats.MajorAxisLength stats.MinorAxisLength],2);
+                radii = diameters/2;
+                [nc, ~] = size(circleCenters);
+                if(nc > 0)
+                    [mradius, argmradius] = max(radii);
+                    if(mradius > maxradius && mradius < ubradius && mradius > lbradius)
+                        maxcluster = i;
+                        maxradius = max(radii);
+                        maxcircle = circleCenters(argmradius, :) + padding;
+                    end
+                end
+            end
+        end
+        
         function[maxcircle, maxradius, maxcluster] = findMaxCircleCluster(cluster_images, lbradius, ubradius)
             % findMaxCircleCluster
             % Finds the biggest circle in the given images, and returns
@@ -85,7 +121,8 @@ classdef DetectionHelper
 
             for i = 1:image_count
                 [w, h] = size(cluster_images(:, :, i));
-                padding = h/4;
+                %padding = h/4;
+                padding = 0;
                 searching = imcrop(cluster_images(:, :, i), [padding padding (w-padding) (h-padding)]);
                 [circleCenters, radii, ~] = imfindcircles(searching, uint16([lbradius ubradius]));
                 [nc, ~] = size(circleCenters);
@@ -113,8 +150,8 @@ classdef DetectionHelper
 
             [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, 1, m/2 - 1);
 
-            %figure; imshow(cluster_images(:, :, maxcluster)); title('MAXCLUSTER');
-            %viscircles(maxcircle, maxradius, 'EdgeColor', 'r');
+            figure; imshow(cluster_images(:, :, maxcluster)); title('MAXCLUSTER');
+            viscircles(maxcircle, maxradius, 'EdgeColor', 'r');
 
             eyeBox = double(eyeBox);
             eyePupil = eyeBox(1, 1:2) + maxcircle;

@@ -130,12 +130,9 @@ while ~isDone(videoFileReader)
 
         %% Need some processing to find the correct Left Eye and Right Eye
         % by using the "eyes" Bounding Box, and then picking the best box
-        [eyesnum, ~] = size(eyes);
         threshold = 0.1;
-        if(eyesnum > 0)
-            leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
-            rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
-        end
+        leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
+        rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
 
         leftEye = SupportFunctions.getRightMost(leftEyes);
         rightEye = SupportFunctions.getLeftMost(rightEyes);
@@ -153,6 +150,8 @@ while ~isDone(videoFileReader)
         videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', eyes, 'Eyes');
         videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', leftEyes, 'Left Eye');
         videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', rightEyes, 'Right Eye');
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', leftEye, 'LEFT', 'Color', 'green');
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', rightEye, 'RIGHT', 'Color', 'green');
         % Reset the points
         %oldPoints = visiblePoints;
         %setPoints(pointTracker, oldPoints);
@@ -160,5 +159,12 @@ while ~isDone(videoFileReader)
     
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);
+    
+    w = waitforbuttonpress;
+    if w == 0
+        disp('Button click')
+    else
+        disp('Key press')
+    end
 end
 
