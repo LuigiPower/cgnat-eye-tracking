@@ -3,6 +3,9 @@ clear; close all; clc;
 %% Load Video file
 videoFileReader = vision.VideoFileReader('mds_project_mad.mov');
 videoFrame      = step(videoFileReader);
+videoFrame      = step(videoFileReader);
+videoFrame      = step(videoFileReader);
+videoFrame      = step(videoFileReader);
 % TODO if we do this on frame 4, nothing works (left eye is wrooong)
 
 faceDetector = vision.CascadeObjectDetector();
@@ -140,7 +143,7 @@ for i = 1:10
     leftEyeImageGSShow = insertMarker(leftEyeImageGSShow, [centers(i, 2) centers(i, 1)], '+', 'Color', 'red');
     
     
-    [circleCenters, radii, metric] = imfindcircles(cluster_images(:, :, i), uint16([m/18 m/6]));
+    [circleCenters, radii, metric] = imfindcircles(cluster_images(:, :, i), uint16([1 m/2]));
     [nc, mc] = size(circleCenters);
     if(nc > 0)
         %figure; imshow(cluster_images(:, :, i)); title('Detected face');
