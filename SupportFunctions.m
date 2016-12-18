@@ -1,5 +1,7 @@
 classdef SupportFunctions
     methods (Static)
+        %% orderDescByArea
+        % Order Boxes by area descending
         function[maxarea, maxindex] = orderDescByArea(bboxes)
             [n, ~] = size(bboxes);
             prods = zeros(n);
