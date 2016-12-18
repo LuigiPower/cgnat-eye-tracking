@@ -1,7 +1,7 @@
-clear; close all; clc;
+clear all; close all; clc;
 
 %% Load Video file
-videoFileReader = vision.VideoFileReader('mds_project_mad.mov');
+videoFileReader = vision.VideoFileReader('mds_project_cose.mov');
 videoFrame      = step(videoFileReader);
 % TODO if we do this on frame 4, nothing works (left eye is wrooong)
 
@@ -50,6 +50,10 @@ videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', nose, 'Nose
 videoFrameShow = insertMarker(videoFrameShow, leftEyePupil, '+', 'Color', 'red');
 videoFrameShow = insertMarker(videoFrameShow, rightEyePupil, '+', 'Color', 'red');
 
+for i = 1:size(leftIris, 1)
+    videoFrameShow = insertMarker(videoFrameShow, leftIris(i, :), '+', 'Color', 'green');
+    videoFrameShow = insertMarker(videoFrameShow, rightIris(i, :), '+', 'Color', 'green');
+end
 % Show The first frame, with all found features
 figure; imshow(videoFrameShow); title('Detected face');
 
@@ -88,37 +92,68 @@ while ~isDone(videoFileReader)
     %visiblePoints = detectMinEigenFeatures(rgb2gray(videoFrame), 'ROI', bbox(2, :));
 
     % Track the points. Note that some points may be lost.
-    [points, isFound] = step(pointTracker, videoFrame);
-    visiblePoints = points(isFound, :);
-    oldInliers = oldPoints(isFound, :);
+    %[points, isFound] = step(pointTracker, videoFrame);
+    %visiblePoints = points(isFound, :);
+    %oldInliers = oldPoints(isFound, :);
     
-    if size(visiblePoints, 1) >= 2 % need at least 2 points
+    %if size(visiblePoints, 1) >= 2 % need at least 2 points
         
         % Estimate the geometric transformation between the old points
         % and the new points and eliminate outliers
-        [xform, oldInliers, visiblePoints] = estimateGeometricTransform(...
-            oldInliers, visiblePoints, 'similarity', 'MaxDistance', 4);
+        %[xform, oldInliers, visiblePoints] = estimateGeometricTransform(...
+        %    oldInliers, visiblePoints, 'similarity', 'MaxDistance', 4);
         
         % Apply the transformation to the bounding box points
-        bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
+        %bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
         %bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
         
         % Insert a bounding box around the object being tracked
-        bboxPolygonLeft = reshape(bboxPointsLeft', 1, []);
+        %bboxPolygonLeft = reshape(bboxPointsLeft', 1, []);
         %bboxPolygonRight = reshape(bboxPointsRight', 1, []);
-        videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonLeft, ...
-            'LineWidth', 2);
+        %videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonLeft, ...
+        %    'LineWidth', 2);
         %videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonRight, ...
         %    'LineWidth', 2);
-                
+        
+
+        bbox = faceDetector(videoFrame);
+        [maximum, indexes] = SupportFunctions.orderDescByArea(bbox);
+
+        face_of_interest = bbox(indexes(1), :);
+        eyes = eyeDetector(videoFrame, face_of_interest);
+
+        leftEyes = leftEyeDetector(videoFrame, face_of_interest);
+        rightEyes = rightEyeDetector(videoFrame, face_of_interest);
+
+        %% Need some processing to find the correct Left Eye and Right Eye
+        % by using the "eyes" Bounding Box, and then picking the best box
+        [eyesnum, ~] = size(eyes);
+        threshold = 0.1;
+        if(eyesnum > 0)
+            leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
+            rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
+        end
+
+        leftEye = SupportFunctions.getRightMost(leftEyes);
+        rightEye = SupportFunctions.getLeftMost(rightEyes);
+        
+        %% Eye finding
+        [leftEyePupil, leftIris] = DetectionHelper.findEye(videoFrame, leftEye, 6);
+        [rightEyePupil, rightIris] = DetectionHelper.findEye(videoFrame, rightEye, 6);
+        points = [leftEyePupil; leftIris; rightEyePupil; rightIris];
+
         % Display tracked points
-        videoFrame = insertMarker(videoFrame, visiblePoints, '+', ...
+        videoFrame = insertMarker(videoFrame, points, '+', ...
             'Color', 'white');
         
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', eyes, 'Eyes');
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', leftEyes, 'Left Eye');
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', rightEyes, 'Right Eye');
         % Reset the points
-        oldPoints = visiblePoints;
-        setPoints(pointTracker, oldPoints);
-    end
+        %oldPoints = visiblePoints;
+        %setPoints(pointTracker, oldPoints);
+    %end
     
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);

@@ -60,7 +60,13 @@ classdef DetectionHelper
                 centers(cluster, :) = centers(cluster, :) ./ counts(cluster);
             end
 
-            %figure, imshow(pixel_labels, []), title('image labeled by cluster index');
+            scrsz = get(groot,'ScreenSize');
+            for index = 1:nColors
+                %figure('Position', ...
+                    %[(scrsz(3)/nColors)*index scrsz(4)/2 scrsz(3)/nColors scrsz(4)/2]), ...
+                    %imshow(cluster_images(:, :, index)), ...
+                    %title('image labeled by cluster index');
+            end
         end
         
         %% Eye finding
@@ -78,20 +84,23 @@ classdef DetectionHelper
             maxcluster = 1;
 
             for i = 1:image_count
-                [circleCenters, radii, ~] = imfindcircles(cluster_images(:, :, i), uint16([lbradius ubradius]));
+                [w, h] = size(cluster_images(:, :, i));
+                padding = h/4;
+                searching = imcrop(cluster_images(:, :, i), [padding padding (w-padding) (h-padding)]);
+                [circleCenters, radii, ~] = imfindcircles(searching, uint16([lbradius ubradius]));
                 [nc, ~] = size(circleCenters);
                 if(nc > 0)
                     [mradius, argmradius] = max(radii);
                     if(mradius > maxradius)
                         maxcluster = i;
                         maxradius = max(radii);
-                        maxcircle = circleCenters(argmradius, :);
+                        maxcircle = circleCenters(argmradius, :) + padding;
                     end
                 end
             end
         end
         
-        function[eyePupil, irisPoints] = findEye(videoFrame, eyeBox, clusters)
+        function[eyePupil, irisResults] = findEye(videoFrame, eyeBox, clusters)
             eyeImage = imcrop(videoFrame, eyeBox);
             [~, m] = size(eyeImage);
 
@@ -102,17 +111,27 @@ classdef DetectionHelper
 
             [cluster_images, ~] = DetectionHelper.createClusterImages(clusters, pixel_labels);
 
-            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, 1, m/2);
+            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, 1, m/2 - 1);
 
-            figure; imshow(cluster_images(:, :, maxcluster)); title('MAXCLUSTER');
-            viscircles(maxcircle, maxradius, 'EdgeColor', 'r');
+            %figure; imshow(cluster_images(:, :, maxcluster)); title('MAXCLUSTER');
+            %viscircles(maxcircle, maxradius, 'EdgeColor', 'r');
 
             eyeBox = double(eyeBox);
             eyePupil = eyeBox(1, 1:2) + maxcircle;
-            irisLeft = [eyePupil(1) - maxradius eyePupil(2)];
-            irisRight = [eyePupil(1) + maxradius eyePupil(2)];
+            %irisLeft = [eyePupil(1) - maxradius eyePupil(2)];
+            %irisRight = [eyePupil(1) + maxradius eyePupil(2)];
             
-            irisPoints = [irisLeft; irisRight];
+            numberOfPoints = 20;
+            angles = linspace(0, 2*pi, numberOfPoints);
+            f = @(theta) [cos(theta), sin(theta)];
+            r = arrayfun(@(i)f(angles(i)), 1:numberOfPoints, 'UniformOutput', false);
+            irisPoints = reshape(cell2mat(r), [2 numberOfPoints]);
+            irisResults = zeros(numberOfPoints, 2);
+            
+            irisPoints = (irisPoints .* maxradius);
+            for i = 1:numberOfPoints
+                irisResults(i, :) = irisPoints(:, i)' + maxcircle + eyeBox(1:2);
+            end
         end
     end
 end
