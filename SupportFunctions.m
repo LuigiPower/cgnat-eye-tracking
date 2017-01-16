@@ -1,5 +1,15 @@
 classdef SupportFunctions
     methods (Static)
+        %% points2bbox
+        % get bounding rectangle of a list of 4 points
+        function[bbox] = points2bbox(points)
+            xmin = min(points(:,1));
+            xmax = max(points(:,1));
+            ymin = min(points(:,2));
+            ymax = max(points(:,2));
+            bbox = [xmin ymin (xmax - xmin) (ymax - ymin)];
+        end
+        
         %% orderDescByArea
         % Order Boxes by area descending
         function[maxarea, maxindex] = orderDescByArea(bboxes)
