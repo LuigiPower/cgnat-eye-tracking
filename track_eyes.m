@@ -1,7 +1,11 @@
 clear all; close all; clc;
 
 %% Load Video file
-videoFileReader = vision.VideoFileReader('mds_project_cose.mov');
+filename = 'mds_project_cose.mov';
+videoFileReader = vision.VideoFileReader(filename);
+videoSource2 = VideoReader(filename);
+frames = readFrame(videoSource2);
+totalFrameNumber = size(frames,4);
 
 % skip 1: clear iris
 % skip 40: half iris
@@ -46,25 +50,32 @@ greyscaleVideoFrame = rgb2gray(videoFrame);
 %rightPoints = detectHarrisFeatures(rgb2gray(videoFrame), 'ROI', rightEye);
 %imshow(greyscaleVideoFrame);
 
-
-points = [leftEyePupil; leftIris; rightEyePupil; rightIris];
-oldPoints = points;
-
-initialize(pointTracker, points, videoFrame);
-
-videoPlayer  = vision.VideoPlayer('Position',...
-    [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30]);
+%% Initialization
+xLeftEye = zeros(totalFrameNumber);
+yLeftEye = zeros(totalFrameNumber);
+xRightEye = zeros(totalFrameNumber);
+yRightEye = zeros(totalFrameNumber);
+frameCount = 1;
 
 % Convert the first box into a list of 4 points
 % This is needed to be able to visualize the rotation of the object.
-bboxPointsLeft = bbox2points(leftEye);
-bboxPointsRight = bbox2points(rightEye);
+bboxPointsLeft = double(bbox2points(leftEye));
+bboxPointsRight = double(bbox2points(rightEye));
 bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
 bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
-pointThreshold = size(points, 1)/2; % Points to lose before recovery
-%pointThreshold = (10*2 + 2)/2; % Points to lose before recovery
-retryCount = 0;
+retryLeftCount = 0;
+retryRightCount = 0;
 retryMax = 5;
+
+points = [leftEyePupil; rightEyePupil; bboxPointsLeft; bboxPointsRight];
+oldPoints = points;
+initialize(pointTracker, points, videoFrame);
+%pointThreshold = (10*2 + 2)/2; % Points to lose before recovery
+pointThreshold = size(points, 1)/2; % Points to lose before recovery
+
+%% Play the video and track both eyes
+videoPlayer  = vision.VideoPlayer('Position',...
+    [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30]);
 
 while ~isDone(videoFileReader)
     % get the next frame
@@ -75,8 +86,62 @@ while ~isDone(videoFileReader)
 
     % Track the points. Note that some points may be lost.
     [points, isFound] = step(pointTracker, videoFrame);
-    visiblePoints = points(isFound, :);
-    oldInliers = oldPoints(isFound, :);
+    
+    if isFound(1) == 0 % LeftEyePupil lost tracking
+        if retryLeftCount < retryMax
+            %%Recover points knowing last bounding box
+            % (try this for a few frames, then try and recover the whole face)
+            [leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPoints(videoFrame, bboxLeftEye, [], clusters);
+            if size(leftEyePupil, 1) > 0
+                points(1, :) = leftEyePupil;
+            end
+            retryLeftCount = retryLeftCount + 1;
+        else
+            %%Recover points knowing nothing
+            [leftEye, ~, leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
+            if size(leftEye, 1) > 0
+                bboxPointsLeft = double(bbox2points(leftEye));
+                bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
+                
+                % set bboxPointsLeft to points(3, 4, 5, 6)
+                points(1, :) = leftEyePupil;
+                points(3:6, :) = bboxPointsLeft;
+            end
+        end
+    else
+        retryLeftCount = 0;
+    end
+    
+    if isFound(2) == 0 %RightEyePupil lost tracking
+        if retryRightCount < retryMax
+            %%Recover points knowing last bounding box
+            % (try this for a few frames, then try and recover the whole face)
+            [~, ~, rightEyePupil, ~] = DetectionHelper.recoverPoints(videoFrame, [], bboxRightEye, clusters);
+            if size(rightEyePupil, 1) > 0
+                points(2, :) = rightEyePupil;
+            end
+            retryRightCount = retryRightCount + 1;
+        else
+            %%Recover points knowing nothing
+            [~, rightEye, ~, ~, rightEyePupil, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
+            if size(detected, 1) > 0
+                bboxPointsRight = double(bbox2points(rightEye));
+                bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
+
+                % set bboxPointsRight to points(7, 8, 9, 10)
+                points(1, :) = rightEyePupil;
+                points(7:10, :) = bboxPointsRight;
+            end
+        end
+    else
+        retryRightCount = 0;
+    end
+    
+    % TODO same stuff for the bounding boxes
+    
+    %visiblePoints = points(isFound, :);
+    visiblePoints = points;
+    oldInliers = oldPoints;
     
     if size(visiblePoints, 1) >= pointThreshold % need at least 2 points
         retryCount = 0;
@@ -87,8 +152,8 @@ while ~isDone(videoFileReader)
             oldInliers, visiblePoints, 'similarity', 'MaxDistance', 4);
         
         % Apply the transformation to the bounding box points
-        bboxPointsLeft = transformPointsForward(xform, double(bboxPointsLeft));
-        bboxPointsRight = transformPointsForward(xform, double(bboxPointsRight));
+        bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
+        bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
         bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
         bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
         
@@ -105,31 +170,8 @@ while ~isDone(videoFileReader)
             'Color', 'white');
 
         % Reset the points
-        oldPoints = visiblePoints;
+        oldPoints = points;
         setPoints(pointTracker, oldPoints);
-    elseif retryCount < retryMax
-        %%Recover points knowing last bounding box
-        % (try this for a few frames, then try and recover the whole face)
-        [leftEye, rightEye] = DetectionHelper.recoverPoints(videoFrame, bboxLeftEye, bboxRightEye, clusters);
-        detected = [leftEyePupil; leftIris; rightEyePupil; rightIris];
-        if size(detected, 1) > 0
-            oldPoints = detected;
-            setPoints(pointTracker, oldPoints);
-        end
-        retryCount = retryCount + 1;
-    else
-        %%Recover points knowing nothing
-        [leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
-        detected = [leftEyePupil; leftIris; rightEyePupil; rightIris];
-        if size(detected, 1) > 0
-            oldPoints = detected;
-            setPoints(pointTracker, oldPoints);
-
-            bboxPointsLeft = bbox2points(leftEye);
-            bboxPointsRight = bbox2points(rightEye);
-            bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
-            bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
-        end
     end
     
     videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxLeftEye, 'Left Eye');
@@ -137,12 +179,6 @@ while ~isDone(videoFileReader)
     
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);
-    
-    %w = waitforbuttonpress;
-    %if w == 0
-    %    disp('Button click')
-    %else
-    %    disp('Key press')
-    %end
 end
 
+%% Plot X and Y position of both eyes

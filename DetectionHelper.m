@@ -3,15 +3,26 @@ classdef DetectionHelper
         %% Point recovery
         function[leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPoints(videoFrame, bboxLeftEye, bboxRightEye, clusters)
             %% Eye finding
-            [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, int16(bboxLeftEye), clusters);
-            [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, int16(bboxRightEye), clusters);
+            successL = true; successR = true; leftEyePupil = []; rightEyePupil = []; leftIris = []; rightIris = [];
+            if size(bboxLeftEye, 1) ~= 0
+                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, int16(bboxLeftEye), clusters);
+            end
+            if size(bboxRightEye, 1) ~= 0
+                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, int16(bboxRightEye), clusters);
+            end
             if ~successL || ~successR
                 leftEyePupil = [];
                 rightEyePupil = [];
             end
         end
         
-        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPointsFromScratch(videoFrame, clusters)
+        % eye by default(0) means both, 1 means left eye, 2 means right eye
+        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPointsFromScratch(videoFrame, clusters, eye)
+            successL = true; successR = true; leftEyePupil = []; rightEyePupil = []; leftIris = []; rightIris = [];
+            if nargin < 3
+                eye = 0;
+            end
+            
             faceDetector = vision.CascadeObjectDetector();
             eyeDetector = vision.CascadeObjectDetector('EyePairSmall', 'UseROI', true);
             leftEyeDetector = vision.CascadeObjectDetector('LeftEye', 'UseROI', true);
@@ -25,21 +36,23 @@ classdef DetectionHelper
             face_of_interest = bbox(indexes(1), :);
             eyes = eyeDetector(videoFrame, face_of_interest);
 
-            leftEyes = leftEyeDetector(videoFrame, face_of_interest);
-            rightEyes = rightEyeDetector(videoFrame, face_of_interest);
-
-            %% Need some processing to find the correct Left Eye and Right Eye
-            % by using the "eyes" Bounding Box, and then picking the best box
             threshold = 0.1;
-            leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
-            rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
-
-            leftEye = SupportFunctions.getRightMost(leftEyes);
-            rightEye = SupportFunctions.getLeftMost(rightEyes);
-
+            
             %% Eye finding
-            [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters);
-            [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters);
+            % Need some processing to find the correct Left Eye and Right Eye
+            % by using the "eyes" Bounding Box, and then picking the best box
+            if eye == 0 || eye == 1
+                leftEyes = leftEyeDetector(videoFrame, face_of_interest);
+                leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
+                leftEye = SupportFunctions.getRightMost(leftEyes);
+                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters);
+            end
+            if eye == 0 || eye == 2
+                rightEyes = rightEyeDetector(videoFrame, face_of_interest);
+                rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
+                rightEye = SupportFunctions.getLeftMost(rightEyes);
+                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters);
+            end
             
             if ~successL || ~successR
                 leftEyePupil = [];
@@ -53,7 +66,7 @@ classdef DetectionHelper
             % Creates 3 channel gray scale
             %   @param image image to convert
             
-            imageGS = imadjust(rgb2gray(image), [0.0 0.25], [0 1.0]);
+            imageGS = imadjust(rgb2gray(image), [0.1 0.25], [0 1.0]);
             image(:, :, 1) = imageGS;
             image(:, :, 2) = imageGS;
             image(:, :, 3) = imageGS;
