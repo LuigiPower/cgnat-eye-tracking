@@ -43,23 +43,26 @@ classdef DetectionHelper
             
             leftEyes = leftEyeDetector(videoFrame, face_of_interest);
             rightEyes = rightEyeDetector(videoFrame, face_of_interest);
-            totalEyes = [leftEyes;rightEyes];
-            totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
-            totalEyes
                 
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
             % by using the "eyes" Bounding Box, and then picking the best box
             if eye == 0 || eye == 1
                 leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
-                leftEye = SupportFunctions.getRightMost(totalEyes);
-                leftEye
+                if size(leftEyes, 1) > 0
+                    leftEye = SupportFunctions.getRightMost(leftEyes);
+                else
+                    leftEye = SupportFunctions.getRightMost(rightEyes);
+                end
                 [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters, true);
             end
             if eye == 0 || eye == 2
                 rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
-                rightEye = SupportFunctions.getLeftMost(totalEyes);
-                rightEye
+                if size(rightEyes, 1) > 0
+                    rightEye = SupportFunctions.getLeftMost(rightEyes);
+                else
+                    rightEye = SupportFunctions.getLeftMost(leftEyes);
+                end
                 [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters, true);
             end
             
@@ -83,7 +86,7 @@ classdef DetectionHelper
             % Creates 3 channel gray scale
             %   @param image image to convert
             
-            imageGS = imadjust(rgb2gray(image), [0.1 0.25], [0 1.0]);
+            imageGS = imadjust(rgb2gray(image), [0.0 0.19], [0 1.0]);
             image(:, :, 1) = imageGS;
             image(:, :, 2) = imageGS;
             image(:, :, 3) = imageGS;

@@ -1,7 +1,8 @@
 clear all; close all; clc;
 
 %% Load Video file
-filename = 'uncharted4second.mp4';
+%filename = 'uncharted4second.mp4';
+filename = 'mds_project_cose.mov';
 videoFileReader = vision.VideoFileReader(filename);
 videoForFrameCount = VideoReader(filename);
 lastFrame = read(videoForFrameCount, inf);
@@ -73,6 +74,9 @@ initialize(pointTracker, points, videoFrame);
 %pointThreshold = (10*2 + 2)/2; % Points to lose before recovery
 pointThreshold = size(points, 1)/2; % Points to lose before recovery
 
+leftEyeTracked = true;
+rightEyeTracked = true;
+
 %% Play the video and track both eyes
 videoPlayer  = vision.VideoPlayer('Position',...
     [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30]);
@@ -88,13 +92,15 @@ while ~isDone(videoFileReader)
     [points, isFound] = step(pointTracker, videoFrame);
     
     %% Recovering lost points
-    if isFound(1) == 0 % LeftEyePupil lost tracking
+    if isFound(1) == 0 || ~leftEyeTracked % LeftEyePupil lost tracking
+        leftEyeTracked = false;
         if retryLeftCount < retryMax
             %%Recover points knowing last bounding box
             % (try this for a few frames, then try and recover the whole face)
             [leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPoints(videoFrame, bboxLeftEye, [], clusters);
             if size(leftEyePupil, 1) > 0
                 points(1, :) = leftEyePupil;
+                leftEyeTracked = true;
             end
             retryLeftCount = retryLeftCount + 1;
         else
@@ -107,19 +113,22 @@ while ~isDone(videoFileReader)
                 % set bboxPointsLeft to points(3, 4, 5, 6)
                 points(1, :) = leftEyePupil;
                 points(3:6, :) = bboxPointsLeft;
+                leftEyeTracked = true;
             end
         end
     else
         retryLeftCount = 0;
     end
     
-    if isFound(2) == 0 %RightEyePupil lost tracking
+    if isFound(2) == 0 || ~rightEyeTracked % RightEyePupil lost tracking
+        rightEyeTracked = false;
         if retryRightCount < retryMax
             %%Recover points knowing last bounding box
             % (try this for a few frames, then try and recover the whole face)
             [~, ~, rightEyePupil, ~] = DetectionHelper.recoverPoints(videoFrame, [], bboxRightEye, clusters);
             if size(rightEyePupil, 1) > 0
                 points(2, :) = rightEyePupil;
+                rightEyeTracked = true;
             end
             retryRightCount = retryRightCount + 1;
         else
@@ -132,6 +141,7 @@ while ~isDone(videoFileReader)
                 % set bboxPointsRight to points(7, 8, 9, 10)
                 points(1, :) = rightEyePupil;
                 points(7:10, :) = bboxPointsRight;
+                rightEyeTracked = true;
             end
         end
     else
@@ -141,12 +151,17 @@ while ~isDone(videoFileReader)
     % TODO same stuff for the bounding boxes
     
     %% Calculating X and Y movement of pupils
-    leftBoxCenter = mean(points(3:6, :));
-    rightBoxCenter = mean(points(7:10, :));
-    xLeftEye(frameCount) = leftBoxCenter(1) - points(1, 1);
-    yLeftEye(frameCount) = leftBoxCenter(2) - points(1, 2);
-    xRightEye(frameCount) = rightBoxCenter(1) - points(2, 1);
-    yRightEye(frameCount) = rightBoxCenter(2) - points(2, 2);
+    if leftEyeTracked
+        leftBoxCenter = mean(points(3:6, :));
+        xLeftEye(frameCount) = leftBoxCenter(1) - points(1, 1);
+        yLeftEye(frameCount) = leftBoxCenter(2) - points(1, 2);
+    end
+    if rightEyeTracked
+        rightBoxCenter = mean(points(7:10, :));
+        xRightEye(frameCount) = rightBoxCenter(1) - points(2, 1);
+        yRightEye(frameCount) = rightBoxCenter(2) - points(2, 2);
+    end
+    
     frameCount = frameCount + 1;
     %% Showing the points
     %visiblePoints = points(isFound, :);
