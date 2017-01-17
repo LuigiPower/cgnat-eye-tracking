@@ -3,7 +3,8 @@ classdef DetectionHelper
         %% Point recovery
         function[leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPoints(videoFrame, bboxLeftEye, bboxRightEye, clusters)
             %% Eye finding
-            successL = true; successR = true; leftEyePupil = []; rightEyePupil = []; leftIris = []; rightIris = [];
+            successL = true; successR = true; leftEyePupil = [];
+            rightEyePupil = []; leftIris = []; rightIris = [];
             if size(bboxLeftEye, 1) ~= 0
                 [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, int16(bboxLeftEye), clusters);
             end
@@ -18,7 +19,9 @@ classdef DetectionHelper
         
         % eye by default(0) means both, 1 means left eye, 2 means right eye
         function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPointsFromScratch(videoFrame, clusters, eye)
-            successL = true; successR = true; leftEyePupil = []; rightEyePupil = []; leftIris = []; rightIris = [];
+            successL = true; successR = true; leftEyePupil = [];
+            rightEyePupil = []; leftIris = []; rightIris = [];
+            leftEye = []; rightEye = [];
             if nargin < 3
                 eye = 0;
             end

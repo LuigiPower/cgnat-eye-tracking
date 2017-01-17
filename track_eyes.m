@@ -1,11 +1,11 @@
 clear all; close all; clc;
 
 %% Load Video file
-filename = 'mds_project_cose.mov';
+filename = 'mds_project_mad.mov';
 videoFileReader = vision.VideoFileReader(filename);
-videoSource2 = VideoReader(filename);
-frames = readFrame(videoSource2);
-totalFrameNumber = size(frames,4);
+videoForFrameCount = VideoReader(filename);
+lastFrame = read(videoForFrameCount, inf);
+totalFrameNumber = videoForFrameCount.NumberOfFrames;
 
 % skip 1: clear iris
 % skip 40: half iris
@@ -51,10 +51,10 @@ greyscaleVideoFrame = rgb2gray(videoFrame);
 %imshow(greyscaleVideoFrame);
 
 %% Initialization
-xLeftEye = zeros(totalFrameNumber);
-yLeftEye = zeros(totalFrameNumber);
-xRightEye = zeros(totalFrameNumber);
-yRightEye = zeros(totalFrameNumber);
+xLeftEye = zeros(totalFrameNumber, 1);
+yLeftEye = zeros(totalFrameNumber, 1);
+xRightEye = zeros(totalFrameNumber, 1);
+yRightEye = zeros(totalFrameNumber, 1);
 frameCount = 1;
 
 % Convert the first box into a list of 4 points
@@ -87,6 +87,7 @@ while ~isDone(videoFileReader)
     % Track the points. Note that some points may be lost.
     [points, isFound] = step(pointTracker, videoFrame);
     
+    %% Recovering lost points
     if isFound(1) == 0 % LeftEyePupil lost tracking
         if retryLeftCount < retryMax
             %%Recover points knowing last bounding box
@@ -139,40 +140,47 @@ while ~isDone(videoFileReader)
     
     % TODO same stuff for the bounding boxes
     
+    %% Calculating X and Y movement of pupils
+    leftBoxCenter = mean(points(3:6, :));
+    rightBoxCenter = mean(points(7:10, :));
+    xLeftEye(frameCount) = leftBoxCenter(1) - points(1, 1);
+    yLeftEye(frameCount) = leftBoxCenter(2) - points(1, 2);
+    xRightEye(frameCount) = rightBoxCenter(1) - points(2, 1);
+    yRightEye(frameCount) = rightBoxCenter(2) - points(2, 2);
+    frameCount = frameCount + 1;
+    %% Showing the points
     %visiblePoints = points(isFound, :);
     visiblePoints = points;
     oldInliers = oldPoints;
     
-    if size(visiblePoints, 1) >= pointThreshold % need at least 2 points
-        retryCount = 0;
-        
-        % Estimate the geometric transformation between the old points
-        % and the new points and eliminate outliers
-        [xform, oldInliers, visiblePoints] = estimateGeometricTransform(...
-            oldInliers, visiblePoints, 'similarity', 'MaxDistance', 4);
-        
-        % Apply the transformation to the bounding box points
-        bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
-        bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
-        bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
-        bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
-        
-        % Insert a bounding box around the object being tracked
-        bboxPolygonLeft = reshape(bboxPointsLeft', 1, []);
-        bboxPolygonRight = reshape(bboxPointsRight', 1, []);
-        videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonLeft, ...
-            'LineWidth', 2);
-        videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonRight, ...
-            'LineWidth', 2);
-        
-        % Display tracked points
-        videoFrame = insertMarker(videoFrame, points, '+', ...
-            'Color', 'white');
+    %if size(visiblePoints, 1) >= pointThreshold % need at least 2 points
+    % Estimate the geometric transformation between the old points
+    % and the new points and eliminate outliers
+    [xform, oldInliers, visiblePoints] = estimateGeometricTransform(...
+        oldInliers, visiblePoints, 'similarity', 'MaxDistance', 4);
 
-        % Reset the points
-        oldPoints = points;
-        setPoints(pointTracker, oldPoints);
-    end
+    % Apply the transformation to the bounding box points
+    bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
+    bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
+    bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
+    bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
+
+    % Insert a bounding box around the object being tracked
+    bboxPolygonLeft = reshape(bboxPointsLeft', 1, []);
+    bboxPolygonRight = reshape(bboxPointsRight', 1, []);
+    videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonLeft, ...
+        'LineWidth', 2);
+    videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonRight, ...
+        'LineWidth', 2);
+
+    % Display tracked points
+    videoFrame = insertMarker(videoFrame, points, '+', ...
+        'Color', 'white');
+
+    % Reset the points
+    oldPoints = points;
+    setPoints(pointTracker, oldPoints);
+    %end
     
     videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxLeftEye, 'Left Eye');
     videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxRightEye, 'Right Eye');
@@ -182,3 +190,6 @@ while ~isDone(videoFileReader)
 end
 
 %% Plot X and Y position of both eyes
+x = 1:totalFrameNumber;
+figure; plot(x, xLeftEye, x, yLeftEye); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels');
+figure; plot(x, xRightEye, x, yRightEye); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels');
