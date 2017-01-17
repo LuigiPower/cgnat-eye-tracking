@@ -1,7 +1,7 @@
 clear all; close all; clc;
 
 %% Load Video file
-filename = 'mds_project_mad.mov';
+filename = 'uncharted4second.mp4';
 videoFileReader = vision.VideoFileReader(filename);
 videoForFrameCount = VideoReader(filename);
 lastFrame = read(videoForFrameCount, inf);
@@ -191,5 +191,5 @@ end
 
 %% Plot X and Y position of both eyes
 x = 1:totalFrameNumber;
-figure; plot(x, xLeftEye, x, yLeftEye); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels');
-figure; plot(x, xRightEye, x, yRightEye); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels');
+figure; plot(x, xLeftEye, x, yLeftEye); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X', 'Y');
+figure; plot(x, xRightEye, x, yRightEye); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X', 'Y');

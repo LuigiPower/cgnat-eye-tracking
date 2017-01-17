@@ -6,10 +6,10 @@ classdef DetectionHelper
             successL = true; successR = true; leftEyePupil = [];
             rightEyePupil = []; leftIris = []; rightIris = [];
             if size(bboxLeftEye, 1) ~= 0
-                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, int16(bboxLeftEye), clusters);
+                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, int16(bboxLeftEye), clusters, true);
             end
             if size(bboxRightEye, 1) ~= 0
-                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, int16(bboxRightEye), clusters);
+                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, int16(bboxRightEye), clusters, true);
             end
             if ~successL || ~successR
                 leftEyePupil = [];
@@ -32,7 +32,7 @@ classdef DetectionHelper
             rightEyeDetector = vision.CascadeObjectDetector('RightEye', 'UseROI', true);
             %eyeBigDetector = vision.CascadeObjectDetector('EyePairBig', 'UseROI', true);
             %noseDetector = vision.CascadeObjectDetector('Nose', 'UseROI', true);
-
+            
             bbox = faceDetector(videoFrame);
             [~, indexes] = SupportFunctions.orderDescByArea(bbox);
 
@@ -41,21 +41,35 @@ classdef DetectionHelper
 
             threshold = 0.1;
             
+            leftEyes = leftEyeDetector(videoFrame, face_of_interest);
+            rightEyes = rightEyeDetector(videoFrame, face_of_interest);
+            totalEyes = [leftEyes;rightEyes];
+            totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
+            totalEyes
+                
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
             % by using the "eyes" Bounding Box, and then picking the best box
             if eye == 0 || eye == 1
-                leftEyes = leftEyeDetector(videoFrame, face_of_interest);
                 leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
-                leftEye = SupportFunctions.getRightMost(leftEyes);
-                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters);
+                leftEye = SupportFunctions.getRightMost(totalEyes);
+                leftEye
+                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters, true);
             end
             if eye == 0 || eye == 2
-                rightEyes = rightEyeDetector(videoFrame, face_of_interest);
                 rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
-                rightEye = SupportFunctions.getLeftMost(rightEyes);
-                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters);
+                rightEye = SupportFunctions.getLeftMost(totalEyes);
+                rightEye
+                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters, true);
             end
+            
+            %if debug
+                videoFrameShow = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
+                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', eyes, 'Eyes');
+                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', leftEyes, 'Left Eye');
+                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', rightEyes, 'Right Eye');
+                imshow(videoFrameShow);
+            %end
             
             if ~successL || ~successR
                 leftEyePupil = [];
@@ -216,7 +230,7 @@ classdef DetectionHelper
 
             [cluster_images, ~] = DetectionHelper.createClusterImages(clusters, pixel_labels);
 
-            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, 2, 25);
+            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, 1, 25);
             if maxradius == 0
                 success = false;
             end

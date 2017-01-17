@@ -56,12 +56,16 @@ classdef SupportFunctions
         % Get left most bounding box
         function[box] = getLeftMost(bboxes)
             [n1, ~] = size(bboxes);
-            box = bboxes(1, :);
-            minimum = box(1, 1);
-            for i = 1:n1
-                if(bboxes(i, 1) < minimum)
-                    box = bboxes(i, :);
-                    box
+            if n1 == 0
+                box = [];
+            else
+                box = bboxes(1, :);
+                minimum = box(1, 1);
+                for i = 1:n1
+                    if(bboxes(i, 1) < minimum)
+                        box = bboxes(i, :);
+                        minimum = bboxes(i, 1);
+                    end
                 end
             end
         end
@@ -70,12 +74,17 @@ classdef SupportFunctions
         % Get right most bounding box
         function[box] = getRightMost(bboxes)
             [n1, ~] = size(bboxes);
-            box = bboxes(1, :);
-            maximum = box(1, 1);
-            for i = 1:n1
-                if(bboxes(i, 1) > maximum)
-                    box = bboxes(i, :);
-                    box
+            if n1 == 0
+                box = [];
+            else
+                box = bboxes(1, :);
+                maximum = box(1, 1);
+                for i = 1:n1
+                    bboxes(i, 1)
+                    if(bboxes(i, 1) > maximum)
+                        box = bboxes(i, :);
+                        maximum = bboxes(i, 1);
+                    end
                 end
             end
         end
