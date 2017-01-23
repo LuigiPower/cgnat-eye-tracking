@@ -1,8 +1,9 @@
 clear all; close all; clc;
 
 %% Load Video file
+filename = 'uncharted4first.mp4';
 %filename = 'uncharted4second.mp4';
-filename = 'mds_project_cose.mov';
+%filename = 'mds_project_cose.mov';
 videoFileReader = vision.VideoFileReader(filename);
 videoForFrameCount = VideoReader(filename);
 lastFrame = read(videoForFrameCount, inf);
@@ -52,10 +53,17 @@ greyscaleVideoFrame = rgb2gray(videoFrame);
 %imshow(greyscaleVideoFrame);
 
 %% Initialization
-xLeftEye = zeros(totalFrameNumber, 1);
-yLeftEye = zeros(totalFrameNumber, 1);
-xRightEye = zeros(totalFrameNumber, 1);
-yRightEye = zeros(totalFrameNumber, 1);
+% Using Eye bounding boxes
+xLeftEyeBox = zeros(totalFrameNumber, 1);
+yLeftEyeBox = zeros(totalFrameNumber, 1);
+xRightEyeBox = zeros(totalFrameNumber, 1);
+yRightEyeBox = zeros(totalFrameNumber, 1);
+% Using point between eyes
+xLeftEyeCenter = zeros(totalFrameNumber, 1);
+yLeftEyeCenter = zeros(totalFrameNumber, 1);
+xRightEyeCenter = zeros(totalFrameNumber, 1);
+yRightEyeCenter = zeros(totalFrameNumber, 1);
+% TODO Try using nose
 frameCount = 1;
 
 % Convert the first box into a list of 4 points
@@ -66,9 +74,11 @@ bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
 bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
 retryLeftCount = 0;
 retryRightCount = 0;
-retryMax = 5;
+retryMax = 0;
 
-points = [leftEyePupil; rightEyePupil; bboxPointsLeft; bboxPointsRight];
+eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
+referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
+points = [leftEyePupil; rightEyePupil; bboxPointsLeft; bboxPointsRight; eyeCenter];
 oldPoints = points;
 initialize(pointTracker, points, videoFrame);
 %pointThreshold = (10*2 + 2)/2; % Points to lose before recovery
@@ -92,74 +102,148 @@ while ~isDone(videoFileReader)
     [points, isFound] = step(pointTracker, videoFrame);
     
     %% Recovering lost points
-    if isFound(1) == 0 || ~leftEyeTracked % LeftEyePupil lost tracking
-        leftEyeTracked = false;
-        if retryLeftCount < retryMax
-            %%Recover points knowing last bounding box
-            % (try this for a few frames, then try and recover the whole face)
-            [leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPoints(videoFrame, bboxLeftEye, [], clusters);
-            if size(leftEyePupil, 1) > 0
-                points(1, :) = leftEyePupil;
-                leftEyeTracked = true;
+    if size(isFound, 1) ~= 11 || (~leftEyeTracked && ~rightEyeTracked)
+        [leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
+        disp('Recovering all the points');
+        if size(leftEyePupil, 1) ~= 0 && size(rightEyePupil, 1) ~= 0 && size(leftEye, 1) ~= 0 && size(rightEye, 1) ~= 0
+            bboxPointsLeft = double(bbox2points(leftEye));
+            bboxPointsRight = double(bbox2points(rightEye));
+            bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
+            bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
+
+            eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
+            referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
+            points = [leftEyePupil; rightEyePupil; bboxPointsLeft; bboxPointsRight; eyeCenter];
+            oldPoints = points;
+        end
+    else
+        if isFound(1) == 0 || ~leftEyeTracked % LeftEyePupil lost tracking
+            leftEyeTracked = false;
+            disp('Recovering Left Eye and Pupil using existing boxes');
+            if retryLeftCount < retryMax
+                %%Recover points knowing last bounding box
+                % (try this for a few frames, then try and recover the whole face)
+                [leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPoints(videoFrame, bboxLeftEye, [], clusters);
+                if size(leftEyePupil, 1) > 0
+                    points(1, :) = leftEyePupil;
+                    leftEyeTracked = true;
+                end
+                retryLeftCount = retryLeftCount + 1;
+            else
+                %%Recover points knowing nothing
+                [leftEye, ~, leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
+                disp('Recovering Left Eye and Pupil from scratch');
+                if size(leftEyePupil, 1) > 0
+                    bboxPointsLeft = double(bbox2points(leftEye));
+                    bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
+
+                    % set bboxPointsLeft to points(3, 4, 5, 6)
+                    points(1, :) = leftEyePupil;
+                    points(3:6, :) = bboxPointsLeft;
+                    leftEyeTracked = true;
+                    
+                    eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
+                    referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
+                end
             end
-            retryLeftCount = retryLeftCount + 1;
         else
-            %%Recover points knowing nothing
+            retryLeftCount = 0;
+        end
+
+        if isFound(2) == 0 || ~rightEyeTracked % RightEyePupil lost tracking
+            rightEyeTracked = false;
+            disp('Recovering Right Eye and Pupil using existing boxes');
+            if retryRightCount < retryMax
+                %%Recover points knowing last bounding box
+                % (try this for a few frames, then try and recover the whole face)
+                [~, ~, rightEyePupil, ~] = DetectionHelper.recoverPoints(videoFrame, [], bboxRightEye, clusters);
+                if size(rightEyePupil, 1) > 0
+                    points(2, :) = rightEyePupil;
+                    rightEyeTracked = true;
+                end
+                retryRightCount = retryRightCount + 1;
+            else
+                %%Recover points knowing nothing
+                [~, rightEye, ~, ~, rightEyePupil, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
+                disp('Recovering Right Eye and Pupil from scratch');
+                if size(rightEyePupil, 1) > 0
+                    bboxPointsRight = double(bbox2points(rightEye));
+                    bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
+
+                    % set bboxPointsRight to points(7, 8, 9, 10)
+                    points(2, :) = rightEyePupil;
+                    points(7:10, :) = bboxPointsRight;
+                    rightEyeTracked = true;
+                    
+                    eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
+                    referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
+                end
+            end
+        else
+            retryRightCount = 0;
+        end
+
+        % same stuff for the bounding boxes
+        if prod(isFound(3:6)) == 0 && ~leftEyeTracked
             [leftEye, ~, leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
-            if size(leftEye, 1) > 0
+            disp('Recovering Bounding box Left');
+            if size(leftEyePupil, 1) > 0
                 bboxPointsLeft = double(bbox2points(leftEye));
                 bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
-                
+
                 % set bboxPointsLeft to points(3, 4, 5, 6)
                 points(1, :) = leftEyePupil;
                 points(3:6, :) = bboxPointsLeft;
-                leftEyeTracked = true;
+                
+                eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
+                referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
             end
         end
-    else
-        retryLeftCount = 0;
-    end
-    
-    if isFound(2) == 0 || ~rightEyeTracked % RightEyePupil lost tracking
-        rightEyeTracked = false;
-        if retryRightCount < retryMax
-            %%Recover points knowing last bounding box
-            % (try this for a few frames, then try and recover the whole face)
-            [~, ~, rightEyePupil, ~] = DetectionHelper.recoverPoints(videoFrame, [], bboxRightEye, clusters);
-            if size(rightEyePupil, 1) > 0
-                points(2, :) = rightEyePupil;
-                rightEyeTracked = true;
-            end
-            retryRightCount = retryRightCount + 1;
-        else
-            %%Recover points knowing nothing
+
+        if prod(isFound(7:10)) == 0 && ~rightEyeTracked
             [~, rightEye, ~, ~, rightEyePupil, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
-            if size(detected, 1) > 0
+            disp('Recovering Bounding box Right');
+            if size(rightEyePupil, 1) > 0
                 bboxPointsRight = double(bbox2points(rightEye));
                 bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
 
                 % set bboxPointsRight to points(7, 8, 9, 10)
-                points(1, :) = rightEyePupil;
+                points(2, :) = rightEyePupil;
                 points(7:10, :) = bboxPointsRight;
-                rightEyeTracked = true;
+                eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
+                referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
             end
         end
-    else
-        retryRightCount = 0;
+        
+        %same stuff for the "center" point
+        if isFound(11) == 0 && leftEyeTracked && rightEyeTracked
+            disp('Recovering Center Point');
+            eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
+            referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
+        end
     end
     
-    % TODO same stuff for the bounding boxes
-    
     %% Calculating X and Y movement of pupils
+    % Using Eye bounding boxes
     if leftEyeTracked
         leftBoxCenter = mean(points(3:6, :));
-        xLeftEye(frameCount) = leftBoxCenter(1) - points(1, 1);
-        yLeftEye(frameCount) = leftBoxCenter(2) - points(1, 2);
+        xLeftEyeBox(frameCount) = leftBoxCenter(1) - points(1, 1);
+        yLeftEyeBox(frameCount) = leftBoxCenter(2) - points(1, 2);
     end
     if rightEyeTracked
         rightBoxCenter = mean(points(7:10, :));
-        xRightEye(frameCount) = rightBoxCenter(1) - points(2, 1);
-        yRightEye(frameCount) = rightBoxCenter(2) - points(2, 2);
+        xRightEyeBox(frameCount) = rightBoxCenter(1) - points(2, 1);
+        yRightEyeBox(frameCount) = rightBoxCenter(2) - points(2, 2);
+    end
+    %Using Point between eyes
+    pupilCenter = points(11, :);
+    if leftEyeTracked
+        xLeftEyeCenter(frameCount) = abs(pupilCenter(1) - points(1, 1));
+        yLeftEyeCenter(frameCount) = abs(pupilCenter(2) - points(1, 2));
+    end
+    if rightEyeTracked
+        xRightEyeCenter(frameCount) = abs(pupilCenter(1) - points(2, 1));
+        yRightEyeCenter(frameCount) = abs(pupilCenter(2) - points(2, 2));
     end
     
     frameCount = frameCount + 1;
@@ -205,6 +289,17 @@ while ~isDone(videoFileReader)
 end
 
 %% Plot X and Y position of both eyes
+xDiffBox = xLeftEyeBox - xRightEyeBox;
+yDiffBox = yLeftEyeBox - yRightEyeBox;
+xDiffCenter = referenceDistance(1) - (xLeftEyeCenter + xRightEyeCenter);
+yDiffCenter = referenceDistance(2) - (yLeftEyeCenter + yRightEyeCenter);
+
 x = 1:totalFrameNumber;
-figure; plot(x, xLeftEye, x, yLeftEye); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X', 'Y');
-figure; plot(x, xRightEye, x, yRightEye); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X', 'Y');
+figure; plot(x, xLeftEyeBox, x, yLeftEyeBox); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X BOX', 'Y BOX');
+figure; plot(x, xRightEyeBox, x, yRightEyeBox); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X BOX', 'Y BOX');
+
+figure; plot(x, xLeftEyeCenter, x, yLeftEyeCenter); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X CENTER', 'Y CENTER');
+figure; plot(x, xRightEyeCenter, x, yRightEyeCenter); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X CENTER', 'Y CENTER');
+
+figure; plot(x, xDiffBox, x, yDiffBox); title('Difference BOX'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('Difference X', 'Difference Y');
+figure; plot(x, xDiffCenter, x, yDiffCenter); title('Difference CENTER'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('Difference X', 'Difference Y');

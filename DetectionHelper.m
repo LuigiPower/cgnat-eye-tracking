@@ -6,10 +6,10 @@ classdef DetectionHelper
             successL = true; successR = true; leftEyePupil = [];
             rightEyePupil = []; leftIris = []; rightIris = [];
             if size(bboxLeftEye, 1) ~= 0
-                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, int16(bboxLeftEye), clusters, true);
+                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, int16(bboxLeftEye), clusters, false);
             end
             if size(bboxRightEye, 1) ~= 0
-                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, int16(bboxRightEye), clusters, true);
+                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, int16(bboxRightEye), clusters, false);
             end
             if ~successL || ~successR
                 leftEyePupil = [];
@@ -30,49 +30,62 @@ classdef DetectionHelper
             eyeDetector = vision.CascadeObjectDetector('EyePairSmall', 'UseROI', true);
             leftEyeDetector = vision.CascadeObjectDetector('LeftEye', 'UseROI', true);
             rightEyeDetector = vision.CascadeObjectDetector('RightEye', 'UseROI', true);
-            %eyeBigDetector = vision.CascadeObjectDetector('EyePairBig', 'UseROI', true);
+            eyeBigDetector = vision.CascadeObjectDetector('EyePairBig', 'UseROI', true);
             %noseDetector = vision.CascadeObjectDetector('Nose', 'UseROI', true);
             
             bbox = faceDetector(videoFrame);
             [~, indexes] = SupportFunctions.orderDescByArea(bbox);
-
+            
+            if size(indexes, 1) == 0
+                return;
+            end
+            
             face_of_interest = bbox(indexes(1), :);
             eyes = eyeDetector(videoFrame, face_of_interest);
+            if size(eyes, 1) == 0
+                eyes = eyeBigDetector(videoFrame, face_of_interest);
+            end
 
-            threshold = 0.1;
+            threshold = 0.3;
             
             leftEyes = leftEyeDetector(videoFrame, face_of_interest);
             rightEyes = rightEyeDetector(videoFrame, face_of_interest);
-                
+            totalEyes = [leftEyes; rightEyes];
+            totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
+            
+            debug = false;
+            
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
             % by using the "eyes" Bounding Box, and then picking the best box
             if eye == 0 || eye == 1
-                leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
-                if size(leftEyes, 1) > 0
-                    leftEye = SupportFunctions.getRightMost(leftEyes);
-                else
-                    leftEye = SupportFunctions.getRightMost(rightEyes);
-                end
-                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters, true);
+                %leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
+                %if size(leftEyes, 1) > 0
+                %    leftEye = SupportFunctions.getRightMost(leftEyes);
+                %else
+                %    leftEye = SupportFunctions.getRightMost(rightEyes);
+                %end
+                leftEye = SupportFunctions.getRightMost(totalEyes);
+                [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters, debug);
             end
             if eye == 0 || eye == 2
-                rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
-                if size(rightEyes, 1) > 0
-                    rightEye = SupportFunctions.getLeftMost(rightEyes);
-                else
-                    rightEye = SupportFunctions.getLeftMost(leftEyes);
-                end
-                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters, true);
+                %rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
+                %if size(rightEyes, 1) > 0
+                %    rightEye = SupportFunctions.getLeftMost(rightEyes);
+                %else
+                %    rightEye = SupportFunctions.getLeftMost(leftEyes);
+                %end
+                rightEye = SupportFunctions.getLeftMost(totalEyes);
+                [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters, debug);
             end
             
-            %if debug
+            if debug
                 videoFrameShow = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
                 videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', eyes, 'Eyes');
                 videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', leftEyes, 'Left Eye');
                 videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', rightEyes, 'Right Eye');
                 imshow(videoFrameShow);
-            %end
+            end
             
             if ~successL || ~successR
                 leftEyePupil = [];
@@ -86,7 +99,7 @@ classdef DetectionHelper
             % Creates 3 channel gray scale
             %   @param image image to convert
             
-            imageGS = imadjust(rgb2gray(image), [0.0 0.19], [0 1.0]);
+            imageGS = imadjust(rgb2gray(image), [0.0 0.18], [0 1.0]);
             image(:, :, 1) = imageGS;
             image(:, :, 2) = imageGS;
             image(:, :, 3) = imageGS;
@@ -202,9 +215,9 @@ classdef DetectionHelper
             for i = 1:image_count
                 [w, h] = size(cluster_images(:, :, i));
                 %padding = h/4;
-                padding = 0;
+                padding = ubradius;
                 searching = imcrop(cluster_images(:, :, i), [padding padding (w-padding) (h-padding)]);
-                [circleCenters, radii, ~] = imfindcircles(searching, uint16([lbradius ubradius]), 'ObjectPolarity', 'dark');
+                [circleCenters, radii, ~] = imfindcircles(searching, uint16([lbradius ubradius]), 'ObjectPolarity', 'dark', 'Sensitivity', 0.93);
                 [nc, ~] = size(circleCenters);
                 if(nc > 0)
                     [mradius, argmradius] = max(radii);
@@ -222,10 +235,23 @@ classdef DetectionHelper
                 debug = false;
             end
             success = true;
+            
+            if size(eyeBox, 1) == 0
+                success = false;
+                eyePupil = [];
+                irisResults = [];
+                return;
+            end
   
             eyeImage = imcrop(videoFrame, eyeBox);
-            [~, m] = size(eyeImage);
-
+            [n, m] = size(eyeImage);
+            if m == 0 || n == 0
+                success = false;
+                eyePupil = [];
+                irisResults = [];
+                return;
+            end
+            
             eyeImage = DetectionHelper.toGrayScale(eyeImage);
 
             [~, ~, pixel_labels] = DetectionHelper.clusterImage(...
@@ -233,7 +259,7 @@ classdef DetectionHelper
 
             [cluster_images, ~] = DetectionHelper.createClusterImages(clusters, pixel_labels);
 
-            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, 1, 25);
+            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, m/90, m/30);
             if maxradius == 0
                 success = false;
             end

@@ -21,6 +21,19 @@ classdef SupportFunctions
             [maxarea, maxindex] = max(prods);
         end
         
+        %% orderAscByArea
+        % Order Boxes by area descending
+        function[minarea, minindex] = orderAscByArea(bboxes)
+            [n, ~] = size(bboxes);
+            prods = zeros(n);
+            for i = 1:n
+                prods(i) = prod(bboxes(i, 3:4));
+            end
+            [minarea, minindex] = min(prods);
+        end
+        
+        %% getMaxIntersect
+        % Order by overlap ratio
         function[maxintersect, i, j] = getMaxIntersect(bboxes1, bboxes2)
             [n1, ~] = size(bboxes1);
             [n2, ~] = size(bboxes2);
