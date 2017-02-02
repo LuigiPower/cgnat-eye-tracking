@@ -2,10 +2,13 @@ clear all; close all; clc;
 
 %% Load Video file
 %filename = 'uncharted4first.mp4';
-%filename = 'uncharted4second.mp4';
-filename = 'mds_project_cose.mov';
+filename = 'uncharted4second.mp4';
+%filename = 'mds_project_cose.mov';
 %filename = 'mds_project_xxx.mov';
 %filename = 'mds_project_mad.mov';
+%filename = 'mds_project_hard.mov';
+%filename = 'mds_project_ooo.mov';
+%filename = 'mds_project.mov';
 
 videoFileReader = vision.VideoFileReader(filename);
 videoForFrameCount = VideoReader(filename);
@@ -77,16 +80,20 @@ if size(leftEye, 1) > 0
     bboxPointsLeft = double(bbox2points(leftEye));
     bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
     leftEyeTracked = true;
+    leftBoxTracked = true;
 else
     leftEyeTracked = false;
+    leftBoxTracked = false;
 end
 
 if size(rightEye, 1) > 0
     bboxPointsRight = double(bbox2points(rightEye));
     bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
     rightEyeTracked = true;
+    rightBoxTracked = true;
 else
     rightEyeTracked = false;
+    rightBoxTracked = false;
 end
 
 eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
@@ -115,7 +122,7 @@ while ~isDone(videoFileReader)
     [points, isFound] = step(pointTracker, videoFrame);
     
     %% Recovering lost points
-    if size(isFound, 1) ~= 11 || (~leftEyeTracked && ~rightEyeTracked)
+    if size(isFound, 1) ~= 11 || (~leftEyeTracked && ~rightEyeTracked) || (~leftBoxTracked && ~rightBoxTracked)
         [leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
         disp('Recovering all the points');
         if size(leftEyePupil, 1) ~= 0 && size(rightEyePupil, 1) ~= 0 && size(leftEye, 1) ~= 0 && size(rightEye, 1) ~= 0
@@ -129,6 +136,8 @@ while ~isDone(videoFileReader)
             
             leftEyeTracked = true;
             rightEyeTracked = true;
+            leftBoxTracked = true;
+            rightBoxTracked = true;
         end
     else
         if isFound(1) == 0 || ~leftEyeTracked % LeftEyePupil lost tracking
@@ -196,7 +205,8 @@ while ~isDone(videoFileReader)
         end
 
         % same stuff for the bounding boxes
-        if prod(isFound(3:6)) == 0 && ~leftEyeTracked
+        if (prod(isFound(3:6)) == 0 || ~leftBoxTracked) && ~leftEyeTracked
+            leftBoxTracked = false;
             [leftEye, ~, leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
             disp('Recovering Bounding box Left');
             if size(leftEyePupil, 1) > 0
@@ -208,10 +218,12 @@ while ~isDone(videoFileReader)
                 
                 eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
                 referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
+                leftBoxTracked = true;
             end
         end
 
-        if prod(isFound(7:10)) == 0 && ~rightEyeTracked
+        if (prod(isFound(7:10)) == 0 || ~rightBoxTracked) && ~rightEyeTracked
+            rightBoxTracked = false;
             [~, rightEye, ~, ~, rightEyePupil, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
             disp('Recovering Bounding box Right');
             if size(rightEyePupil, 1) > 0
@@ -222,6 +234,7 @@ while ~isDone(videoFileReader)
                 points(7:10, :) = bboxPointsRight;
                 eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
                 referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
+                rightBoxTracked = true;
             end
         end
         
