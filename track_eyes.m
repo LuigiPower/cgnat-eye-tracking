@@ -1,9 +1,12 @@
 clear all; close all; clc;
 
 %% Load Video file
-filename = 'uncharted4first.mp4';
+%filename = 'uncharted4first.mp4';
 %filename = 'uncharted4second.mp4';
-%filename = 'mds_project_cose.mov';
+filename = 'mds_project_cose.mov';
+%filename = 'mds_project_xxx.mov';
+%filename = 'mds_project_mad.mov';
+
 videoFileReader = vision.VideoFileReader(filename);
 videoForFrameCount = VideoReader(filename);
 lastFrame = read(videoForFrameCount, inf);
@@ -68,37 +71,47 @@ frameCount = 1;
 
 % Convert the first box into a list of 4 points
 % This is needed to be able to visualize the rotation of the object.
-bboxPointsLeft = double(bbox2points(leftEye));
-bboxPointsRight = double(bbox2points(rightEye));
-bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
-bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
-retryLeftCount = 0;
-retryRightCount = 0;
-retryMax = 0;
+bboxPointsLeft = [1 1; 1 1; 1 1; 1 1];
+bboxPointsRight = [1 1; 1 1; 1 1; 1 1];
+if size(leftEye, 1) > 0
+    bboxPointsLeft = double(bbox2points(leftEye));
+    bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
+    leftEyeTracked = true;
+else
+    leftEyeTracked = false;
+end
+
+if size(rightEye, 1) > 0
+    bboxPointsRight = double(bbox2points(rightEye));
+    bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
+    rightEyeTracked = true;
+else
+    rightEyeTracked = false;
+end
 
 eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
 referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
 points = [leftEyePupil; rightEyePupil; bboxPointsLeft; bboxPointsRight; eyeCenter];
 oldPoints = points;
 initialize(pointTracker, points, videoFrame);
-%pointThreshold = (10*2 + 2)/2; % Points to lose before recovery
-pointThreshold = size(points, 1)/2; % Points to lose before recovery
 
-leftEyeTracked = true;
-rightEyeTracked = true;
-
+retryLeftCount = 0;
+retryRightCount = 0;
+retryMax = 30; % TODO A second, check the framerate
+    
 %% Play the video and track both eyes
 videoPlayer  = vision.VideoPlayer('Position',...
     [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30]);
 
 while ~isDone(videoFileReader)
-    % get the next frame
+    %% get the next frame
     videoFrame = step(videoFileReader);
     
-    %faceDetector = vision.CascadeObjectDetector();
-    %visiblePoints = detectMinEigenFeatures(rgb2gray(videoFrame), 'ROI', bbox(2, :));
-
-    % Track the points. Note that some points may be lost.
+    if leftEyeTracked && rightEyeTracked && size(leftEye, 1) > 0 && size(rightEye, 1) > 0
+        [leftEyeTracked, rightEyeTracked] = DetectionHelper.checkOverlap(leftEye, rightEye);
+    end
+    
+    %% Track the points. Note that some points may be lost.
     [points, isFound] = step(pointTracker, videoFrame);
     
     %% Recovering lost points
@@ -108,20 +121,21 @@ while ~isDone(videoFileReader)
         if size(leftEyePupil, 1) ~= 0 && size(rightEyePupil, 1) ~= 0 && size(leftEye, 1) ~= 0 && size(rightEye, 1) ~= 0
             bboxPointsLeft = double(bbox2points(leftEye));
             bboxPointsRight = double(bbox2points(rightEye));
-            bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
-            bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
 
             eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
             referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
             points = [leftEyePupil; rightEyePupil; bboxPointsLeft; bboxPointsRight; eyeCenter];
             oldPoints = points;
+            
+            leftEyeTracked = true;
+            rightEyeTracked = true;
         end
     else
         if isFound(1) == 0 || ~leftEyeTracked % LeftEyePupil lost tracking
             leftEyeTracked = false;
             disp('Recovering Left Eye and Pupil using existing boxes');
             if retryLeftCount < retryMax
-                %%Recover points knowing last bounding box
+                %% Recover points knowing last bounding box
                 % (try this for a few frames, then try and recover the whole face)
                 [leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPoints(videoFrame, bboxLeftEye, [], clusters);
                 if size(leftEyePupil, 1) > 0
@@ -130,12 +144,11 @@ while ~isDone(videoFileReader)
                 end
                 retryLeftCount = retryLeftCount + 1;
             else
-                %%Recover points knowing nothing
+                %% Recover points knowing nothing
                 [leftEye, ~, leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
                 disp('Recovering Left Eye and Pupil from scratch');
                 if size(leftEyePupil, 1) > 0
                     bboxPointsLeft = double(bbox2points(leftEye));
-                    bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
 
                     % set bboxPointsLeft to points(3, 4, 5, 6)
                     points(1, :) = leftEyePupil;
@@ -168,7 +181,6 @@ while ~isDone(videoFileReader)
                 disp('Recovering Right Eye and Pupil from scratch');
                 if size(rightEyePupil, 1) > 0
                     bboxPointsRight = double(bbox2points(rightEye));
-                    bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
 
                     % set bboxPointsRight to points(7, 8, 9, 10)
                     points(2, :) = rightEyePupil;
@@ -189,7 +201,6 @@ while ~isDone(videoFileReader)
             disp('Recovering Bounding box Left');
             if size(leftEyePupil, 1) > 0
                 bboxPointsLeft = double(bbox2points(leftEye));
-                bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
 
                 % set bboxPointsLeft to points(3, 4, 5, 6)
                 points(1, :) = leftEyePupil;
@@ -205,7 +216,6 @@ while ~isDone(videoFileReader)
             disp('Recovering Bounding box Right');
             if size(rightEyePupil, 1) > 0
                 bboxPointsRight = double(bbox2points(rightEye));
-                bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
 
                 % set bboxPointsRight to points(7, 8, 9, 10)
                 points(2, :) = rightEyePupil;
@@ -221,29 +231,29 @@ while ~isDone(videoFileReader)
             eyeCenter = mean([bboxPointsLeft;bboxPointsRight]);
             referenceDistance = abs(mean(bboxPointsLeft) - mean(bboxPointsRight));
         end
-    end
-    
-    %% Calculating X and Y movement of pupils
-    % Using Eye bounding boxes
-    if leftEyeTracked
-        leftBoxCenter = mean(points(3:6, :));
-        xLeftEyeBox(frameCount) = leftBoxCenter(1) - points(1, 1);
-        yLeftEyeBox(frameCount) = leftBoxCenter(2) - points(1, 2);
-    end
-    if rightEyeTracked
-        rightBoxCenter = mean(points(7:10, :));
-        xRightEyeBox(frameCount) = rightBoxCenter(1) - points(2, 1);
-        yRightEyeBox(frameCount) = rightBoxCenter(2) - points(2, 2);
-    end
-    %Using Point between eyes
-    pupilCenter = points(11, :);
-    if leftEyeTracked
-        xLeftEyeCenter(frameCount) = abs(pupilCenter(1) - points(1, 1));
-        yLeftEyeCenter(frameCount) = abs(pupilCenter(2) - points(1, 2));
-    end
-    if rightEyeTracked
-        xRightEyeCenter(frameCount) = abs(pupilCenter(1) - points(2, 1));
-        yRightEyeCenter(frameCount) = abs(pupilCenter(2) - points(2, 2));
+        
+        %% Calculating X and Y movement of pupils
+        % Using Eye bounding boxes
+        if leftEyeTracked
+            leftBoxCenter = mean(points(3:6, :));
+            xLeftEyeBox(frameCount) = leftBoxCenter(1) - points(1, 1);
+            yLeftEyeBox(frameCount) = leftBoxCenter(2) - points(1, 2);
+        end
+        if rightEyeTracked
+            rightBoxCenter = mean(points(7:10, :));
+            xRightEyeBox(frameCount) = rightBoxCenter(1) - points(2, 1);
+            yRightEyeBox(frameCount) = rightBoxCenter(2) - points(2, 2);
+        end
+        %Using Point between eyes
+        pupilCenter = points(11, :);
+        if leftEyeTracked
+            xLeftEyeCenter(frameCount) = abs(pupilCenter(1) - points(1, 1));
+            yLeftEyeCenter(frameCount) = abs(pupilCenter(2) - points(1, 2));
+        end
+        if rightEyeTracked
+            xRightEyeCenter(frameCount) = abs(pupilCenter(1) - points(2, 1));
+            yRightEyeCenter(frameCount) = abs(pupilCenter(2) - points(2, 2));
+        end
     end
     
     frameCount = frameCount + 1;
@@ -252,37 +262,42 @@ while ~isDone(videoFileReader)
     visiblePoints = points;
     oldInliers = oldPoints;
     
-    %if size(visiblePoints, 1) >= pointThreshold % need at least 2 points
-    % Estimate the geometric transformation between the old points
-    % and the new points and eliminate outliers
-    [xform, oldInliers, visiblePoints] = estimateGeometricTransform(...
-        oldInliers, visiblePoints, 'similarity', 'MaxDistance', 4);
+    try
+        %if size(visiblePoints, 1) >= pointThreshold % need at least 2 points
+        % Estimate the geometric transformation between the old points
+        % and the new points and eliminate outliers
+        [xform, oldInliers, visiblePoints] = estimateGeometricTransform(...
+            oldInliers, visiblePoints, 'similarity', 'MaxDistance', 4);
+        
+        % Apply the transformation to the bounding box points
+        bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
+        bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
+        bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
+        bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
 
-    % Apply the transformation to the bounding box points
-    bboxPointsLeft = transformPointsForward(xform, bboxPointsLeft);
-    bboxPointsRight = transformPointsForward(xform, bboxPointsRight);
-    bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
-    bboxRightEye = SupportFunctions.points2bbox(bboxPointsRight);
-
-    % Insert a bounding box around the object being tracked
-    bboxPolygonLeft = reshape(bboxPointsLeft', 1, []);
-    bboxPolygonRight = reshape(bboxPointsRight', 1, []);
-    videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonLeft, ...
-        'LineWidth', 2);
-    videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonRight, ...
-        'LineWidth', 2);
-
+        % Insert a bounding box around the object being tracked
+        bboxPolygonLeft = reshape(bboxPointsLeft', 1, []);
+        bboxPolygonRight = reshape(bboxPointsRight', 1, []);
+        videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonLeft, ...
+            'LineWidth', 2);
+        videoFrame = insertShape(videoFrame, 'Polygon', bboxPolygonRight, ...
+            'LineWidth', 2);
+        
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxLeftEye, 'Left Eye');
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxRightEye, 'Right Eye');
+    catch
+        disp('Failed bboxes');
+    end
+    
     % Display tracked points
     videoFrame = insertMarker(videoFrame, points, '+', ...
         'Color', 'white');
 
     % Reset the points
     oldPoints = points;
+    oldPoints(oldPoints < 0) = 1;
     setPoints(pointTracker, oldPoints);
     %end
-    
-    videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxLeftEye, 'Left Eye');
-    videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxRightEye, 'Right Eye');
     
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);

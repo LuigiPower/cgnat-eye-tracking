@@ -41,17 +41,25 @@ classdef DetectionHelper
             end
             
             face_of_interest = bbox(indexes(1), :);
-            eyes = eyeDetector(videoFrame, face_of_interest);
+            eyes = eyeBigDetector(videoFrame, face_of_interest);
             if size(eyes, 1) == 0
-                eyes = eyeBigDetector(videoFrame, face_of_interest);
+                eyes = eyeDetector(videoFrame, face_of_interest);
             end
 
+            [~, indexes] = SupportFunctions.orderDescByArea(eyes);
+            
+            if size(indexes, 1) == 0
+                return;
+            end
+            
             threshold = 0.3;
             
-            leftEyes = leftEyeDetector(videoFrame, face_of_interest);
-            rightEyes = rightEyeDetector(videoFrame, face_of_interest);
+            leftEyes = leftEyeDetector(videoFrame, eyes(indexes(1), :));
+            rightEyes = rightEyeDetector(videoFrame, eyes(indexes(1), :));
+            [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
+            [~, rightIndexes] = SupportFunctions.orderDescByArea(rightEyes);
             totalEyes = [leftEyes; rightEyes];
-            totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
+            %totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
             
             debug = false;
             
@@ -65,7 +73,9 @@ classdef DetectionHelper
                 %else
                 %    leftEye = SupportFunctions.getRightMost(rightEyes);
                 %end
-                leftEye = SupportFunctions.getRightMost(totalEyes);
+                %m = size(leftIndexes, 2);
+                %leftEye = SupportFunctions.getRightMost(leftEyes(leftIndexes(1:min(2, m)), :));
+                leftEye = SupportFunctions.getRightMost(leftEyes);
                 [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters, debug);
             end
             if eye == 0 || eye == 2
@@ -75,7 +85,9 @@ classdef DetectionHelper
                 %else
                 %    rightEye = SupportFunctions.getLeftMost(leftEyes);
                 %end
-                rightEye = SupportFunctions.getLeftMost(totalEyes);
+                %m = size(rightIndexes, 2);
+                %rightEye = SupportFunctions.getLeftMost(rightEyes(rightIndexes(1:min(2, m)), :));
+                rightEye = SupportFunctions.getLeftMost(rightEyes);
                 [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters, debug);
             end
             
@@ -87,9 +99,25 @@ classdef DetectionHelper
                 imshow(videoFrameShow);
             end
             
-            if ~successL || ~successR
+            if eye == 0 && successL && successR %Only if getting both eyes
+                [successL, successR] = DetectionHelper.checkOverlap(leftEye, rightEye);
+            end
+            
+            if ~successL
                 leftEyePupil = [];
+            end
+            if ~successR
                 rightEyePupil = [];
+            end
+        end
+        
+        function[successL, successR] = checkOverlap(leftEye, rightEye)
+            successL = true; successR = true;
+            
+            overlap = bboxOverlapRatio(leftEye, rightEye);
+            if overlap > 0
+                successL = false;
+                successR = false;
             end
         end
         
@@ -259,7 +287,7 @@ classdef DetectionHelper
 
             [cluster_images, ~] = DetectionHelper.createClusterImages(clusters, pixel_labels);
 
-            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, m/90, m/30);
+            [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, m/60, m/20);
             if maxradius == 0
                 success = false;
             end
