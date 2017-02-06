@@ -75,7 +75,7 @@ classdef DetectionHelper
                 %end
                 %m = size(leftIndexes, 2);
                 %leftEye = SupportFunctions.getRightMost(leftEyes(leftIndexes(1:min(2, m)), :));
-                leftEye = SupportFunctions.getRightMost(leftEyes);
+                leftEye = SupportFunctions.getRightMost(totalEyes);
                 [leftEyePupil, leftIris, successL] = DetectionHelper.findEye(videoFrame, leftEye, clusters, debug);
             end
             if eye == 0 || eye == 2
@@ -87,7 +87,7 @@ classdef DetectionHelper
                 %end
                 %m = size(rightIndexes, 2);
                 %rightEye = SupportFunctions.getLeftMost(rightEyes(rightIndexes(1:min(2, m)), :));
-                rightEye = SupportFunctions.getLeftMost(rightEyes);
+                rightEye = SupportFunctions.getLeftMost(totalEyes);
                 [rightEyePupil, rightIris, successR] = DetectionHelper.findEye(videoFrame, rightEye, clusters, debug);
             end
             
