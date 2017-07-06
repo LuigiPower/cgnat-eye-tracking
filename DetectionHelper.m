@@ -61,7 +61,7 @@ classdef DetectionHelper
             totalEyes = [leftEyes; rightEyes];
             %totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
             
-            debug = false;
+            debug = true;
             
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
@@ -258,7 +258,65 @@ classdef DetectionHelper
             end
         end
         
-        function[eyePupil, irisResults, success] = findEye(videoFrame, eyeBox, clusters, debug)
+%         function[eyePupil, irisResults, success] = findEye(videoFrame, eyeBox, clusters, debug)
+%             if nargin < 4
+%                 debug = false;
+%             end
+%             success = true;
+%             
+%             if size(eyeBox, 1) == 0
+%                 success = false;
+%                 eyePupil = [];
+%                 irisResults = [];
+%                 return;
+%             end
+%   
+%             eyeImage = imcrop(videoFrame, eyeBox);
+%             [n, m] = size(eyeImage);
+%             if m == 0 || n == 0
+%                 success = false;
+%                 eyePupil = [];
+%                 irisResults = [];
+%                 return;
+%             end
+%             
+%             eyeImage = DetectionHelper.toGrayScale(eyeImage);
+% 
+%             [~, ~, pixel_labels] = DetectionHelper.clusterImage(...
+%                 eyeImage, clusters);
+% 
+%             [cluster_images, ~] = DetectionHelper.createClusterImages(clusters, pixel_labels);
+% 
+%             [maxcircle, maxradius, maxcluster] = DetectionHelper.findMaxCircleCluster(cluster_images, m/60, m/20);
+%             if maxradius == 0
+%                 success = false;
+%             end
+% 
+%             if(debug)
+%                 figure; imshow(eyeImage);
+%                 figure; imshow(cluster_images(:, :, maxcluster)); title('MAXCLUSTER');
+%                 viscircles(maxcircle, maxradius, 'EdgeColor', 'r');
+%             end
+%             
+%             eyeBox = double(eyeBox);
+%             eyePupil = eyeBox(1, 1:2) + maxcircle;
+%             %irisLeft = [eyePupil(1) - maxradius eyePupil(2)];
+%             %irisRight = [eyePupil(1) + maxradius eyePupil(2)];
+%             
+%             numberOfPoints = 20;
+%             angles = linspace(0, 2*pi, numberOfPoints);
+%             f = @(theta) [cos(theta), sin(theta)];
+%             r = arrayfun(@(i)f(angles(i)), 1:numberOfPoints, 'UniformOutput', false);
+%             irisPoints = reshape(cell2mat(r), [2 numberOfPoints]);
+%             irisResults = zeros(numberOfPoints, 2);
+%             
+%             irisPoints = (irisPoints .* maxradius);
+%             for i = 1:numberOfPoints
+%                 irisResults(i, :) = irisPoints(:, i)' + maxcircle + eyeBox(1:2);
+%             end
+%         end
+
+function[eyePupil, irisResults, success] = findEye(videoFrame, eyeBox, clusters, debug)
             if nargin < 4
                 debug = false;
             end
