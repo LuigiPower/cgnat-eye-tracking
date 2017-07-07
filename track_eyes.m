@@ -25,6 +25,8 @@ for i = 1:skipFrames
 end
 
 clusters = 6;
+% image = rgb2gray(videoFrame);
+% image = imadjust(image);
 [leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
 
 %% Draw the returned bounding box around the detected face.
@@ -312,13 +314,7 @@ while ~isDone(videoFileReader)
     setPoints(pointTracker, oldPoints);
     %end
     
-    f = figure;
-    w = waitforbuttonpress;
-    if w == 0
-        disp('Button click')
-    else
-        disp('Key press')
-    end
+%     w = waitforbuttonpress;
 
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);
