@@ -1,9 +1,9 @@
 clear all; close all; clc;
 
 %% Load Video file
-filename = 'uncharted4first.mp4';
+%filename = 'uncharted4first.mp4';
 %filename = 'uncharted4second.mp4';
-%filename = 'mds_project_cose.mov';
+filename = 'mds_project_cose.mov';
 %filename = 'mds_project_xxx.mov';
 %filename = 'mds_project_mad.mov';
 %filename = 'mds_project_hard.mov';
@@ -48,7 +48,7 @@ clusters = 6;
 %% Video tracking
 % Create a point tracker and enable the bidirectional error constraint to
 % make it more robust in the presence of noise and clutter.
-pointTracker = vision.PointTracker('MaxBidirectionalError', 2);
+pointTracker = vision.PointTracker('MaxBidirectionalError', 1, 'NumPyramidLevels', 1, 'BlockSize', [29 29]);
 
 %points = [leftEyePupil; rightEyePupil];
 greyscaleVideoFrame = rgb2gray(videoFrame);
@@ -69,7 +69,16 @@ xLeftEyeCenter = zeros(totalFrameNumber, 1);
 yLeftEyeCenter = zeros(totalFrameNumber, 1);
 xRightEyeCenter = zeros(totalFrameNumber, 1);
 yRightEyeCenter = zeros(totalFrameNumber, 1);
+% Angle of face rotation
+dirvectorBase = [0, 0]-[0, 1];
+dirvectorEyes = rightEyePupil - leftEyePupil;
+faceAngle = 0;
+if size(dirvectorEyes) == size(dirvectorBase)
+    faceAngle = acos(dot(dirvectorBase, dirvectorEyes) / norm(dirvectorBase) /norm(dirvectorEyes));
+end
 % TODO Try using nose
+
+
 frameCount = 1;
 
 % Convert the first box into a list of 4 points
@@ -269,6 +278,11 @@ while ~isDone(videoFileReader)
         end
     end
     
+    dirvectorEyes = [points(1, 1), points(1, 2)] - [points(2, 1), points(2, 2)];
+    if size(dirvectorEyes) == size(dirvectorBase)
+        faceAngle = acos(dot(dirvectorBase, dirvectorEyes) / norm(dirvectorBase) /norm(dirvectorEyes));
+    end
+    
     frameCount = frameCount + 1;
     %% Showing the points
     %visiblePoints = points(isFound, :);
@@ -305,6 +319,10 @@ while ~isDone(videoFileReader)
     % Display tracked points
     videoFrame = insertMarker(videoFrame, points, '+', ...
         'Color', 'white');
+    
+    videoFrame = insertObjectAnnotation(videoFrame, 'rectangle', [0,0,50,50], radtodeg(faceAngle));
+    videoFrame  = insertShape(videoFrame, 'Line', [points(1, 1), points(1, 2), points(2, 1), points(2, 2)],...
+    'Color', {'green'},'Opacity',0.7);
 
     % Reset the points
     oldPoints = points;
@@ -312,13 +330,7 @@ while ~isDone(videoFileReader)
     setPoints(pointTracker, oldPoints);
     %end
     
-    f = figure;
-    w = waitforbuttonpress;
-    if w == 0
-        disp('Button click')
-    else
-        disp('Key press')
-    end
+    %w = waitforbuttonpress;
 
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);
