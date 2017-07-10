@@ -3,7 +3,10 @@ clear all; close all; clc;
 %% Load Video file
 %filename = 'uncharted4first.mp4';
 %filename = 'uncharted4second.mp4';
-filename = 'mds_project_cose.mov';
+%filename = 'mds_project_cose.mov';
+%filename = 'test_occhi_oscillazione.mov';
+filename = 'cg_bad.mp4';
+%filename = 'witcher.mp4';
 %filename = 'mds_project_xxx.mov';
 %filename = 'mds_project_mad.mov';
 %filename = 'mds_project_hard.mov';
