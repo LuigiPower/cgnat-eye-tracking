@@ -9,8 +9,12 @@ clear all; close all; clc;
 %filename = 'mds_project_hard.mov';
 %filename = 'mds_project_ooo.mov';
 %filename = 'mds_project.mov';
+%filename = 'mds_project_still.mov';
+%filename = 'cg_bad.mov';
+%filename = 'test_oscillazioni_2secondi.mov';
+filename = 'witcher.mp4';
 %filename = 'pollomega.mp4';
-filename = 'megapollo_cg.mov';
+%filename = 'megapollo_cg.mov';
 
 videoFileReader = vision.VideoFileReader(filename);
 videoForFrameCount = VideoReader(filename);
@@ -76,7 +80,10 @@ xRightEyeCenter = zeros(totalFrameNumber, 1);
 yRightEyeCenter = zeros(totalFrameNumber, 1);
 % Angle of face rotation
 dirvectorBase = [0, 0]-[0, 1];
-dirvectorEyes = rightEyePupil - leftEyePupil;
+dirvectorEyes = [];
+if size(rightEyePupil, 1) > 0 && size(leftEyePupil, 1) > 0
+    dirvectorEyes = rightEyePupil - leftEyePupil;
+end
 faceAngle = 0;
 if size(dirvectorEyes) == size(dirvectorBase)
     faceAngle = acos(dot(dirvectorBase, dirvectorEyes) / norm(dirvectorBase) /norm(dirvectorEyes));
