@@ -133,11 +133,11 @@ classdef PupilTestHelper
 
             minRadius = floor(n/8);
             maxRadius = floor(n/2);
-            minRadius
-            maxRadius
+            %minRadius
+            %maxRadius
             [centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius],'ObjectPolarity','dark', 'Sensitivity',0.9)
-            centers
-            radii
+            %centers
+            %radii
             
             if ((size(centers, 1) == 0) || (size(radii, 1) == 0))
                 success = false;
@@ -152,11 +152,11 @@ classdef PupilTestHelper
 
             
              eyeBox = double(eyeBox);
-             eyeBox
-             maxcircle
+             %eyeBox
+             %maxcircle
              eyeBox(1, 1:2)
              eyePupil = eyeBox(1, 1:2) + maxcircle;
-             eyePupil
+             %eyePupil
              %irisLeft = [eyePupil(1) - maxradius eyePupil(2)];
              %irisRight = [eyePupil(1) + maxradius eyePupil(2)];
              
