@@ -109,8 +109,10 @@ classdef PupilTestHelper
             end
   
             eyeImage = imcrop(videoFrame, eyeBox);
-%             figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('cropped image');
-
+            if debug
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('cropped image');
+            end
+            
             [n, m] = size(eyeImage);
             if m == 0 || n == 0
                 success = false;
@@ -120,22 +122,57 @@ classdef PupilTestHelper
             end
             
             eyeImage = rgb2gray(eyeImage);
-%             figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('gray scale image');
-            
+            if debug
+                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('gray scale image');
+            end
           
             eyeImage = imadjust(eyeImage);
-%             figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imadjust');
+            if debug
+                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imadjust');
+            end
             
             eyeImage = imadjust(eyeImage, [0.2 0.25], [0 1]);
-%             figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imadjust cut');
+            if debug
+                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imadjust cut');
+            end
             eyeImage = imadjust(eyeImage, [0 0.05], [0 1]);
-%             figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust cut 2 ',eyeString));
-
-            minRadius = floor(n/8);
+            if debug
+                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust cut 2 ',eyeString));
+            end
+            
+            se = strel('line', 20, 0);
+            eyeImage = imbothat(eyeImage, se);
+            
+            eyeImage = imcomplement(eyeImage);
+            
+            se = [strel('line', 2, 90), strel('line', 2, 90)];
+            eyeImage = imdilate(eyeImage, se);
+            se = [strel('disk', 1)];
+            eyeImage = imerode(eyeImage, se);
+            
+            eyeImage = imcomplement(eyeImage);
+            if debug
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imdilate',eyeString));
+            end
+            
+            se = strel('disk', 2);
+            toremove = imtophat(eyeImage, se);
+            if debug
+                figure; imshow(toremove, 'InitialMagnification', 'fit'); title(strcat('imtophat',eyeString));
+            end
+            
+            eyeImage = imsubtract(eyeImage, toremove);
+            if debug
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('subtract',eyeString));
+            end
+            
+            minRadius = floor(n/16);
             maxRadius = floor(n/2);
             %minRadius
             %maxRadius
-            [centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius],'ObjectPolarity','dark', 'Sensitivity',0.9)
+            %eyeImage
+            %[centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius],'ObjectPolarity','dark', 'Sensitivity',0.9);
+            [centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius], 'Sensitivity',0.9);
             %centers
             %radii
             
@@ -145,10 +182,13 @@ classdef PupilTestHelper
                 irisResults = [];
                 return;
             end
-            maxcircle=centers(1,:);
-            maxradius = radii(1);
-            %h = viscircles(centers,radii);
-            %h
+            [maxradius, argmradius] = max(radii);
+            maxcircle = centers(argmradius,:);
+            
+            if debug
+                h = viscircles(centers,radii);
+                h
+            end
 
             
              eyeBox = double(eyeBox);

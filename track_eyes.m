@@ -1,12 +1,14 @@
 clear all; close all; clc;
 
 %% Load Video file
+path = 'F:\MDS\CG\';
+
 % filename = 'uncharted4first';
 %filename = 'uncharted4second';
 %filename = 'badcg2';
-filename = 'witcher';
+%filename = 'witcher';
 %filename = 'mds_project_xxx';
-%filename = 'mds_project_mad';
+%filename = 'mds_project_cose';
 %filename = 'mds_project_hard';
 %filename = 'mds_project_ooo';
 %filename = 'mds_project';
@@ -16,17 +18,20 @@ filename = 'witcher';
 %filename = 'cg_bad';
 %filename = 'pollomega';
 %filename = 'megapollo_cg';
+filename = 'Activision R&D Real-time Character Demo-l6R6N4Vy0nE';
 ext = '.mp4';
 
-videoFileReader = vision.VideoFileReader(strcat(filename, ext));
-videoForFrameCount = VideoReader(strcat(filename, ext));
+videoFileReader = vision.VideoFileReader(strcat(strcat(path, filename), ext));
+videoForFrameCount = VideoReader(strcat(strcat(path, filename), ext));
 lastFrame = read(videoForFrameCount, inf);
 totalFrameNumber = videoForFrameCount.NumberOfFrames;
 
 % skip 1: clear iris
 % skip 40: half iris
 % skip 60: iris on topleft corner
-skipFrames = 1;
+% 300 470 548
+skipFrames = 300;
+maxFrames = 999999;
 
 for i = 1:skipFrames
     videoFrame      = step(videoFileReader);
@@ -36,7 +41,7 @@ clusters = 6;
 % image = rgb2gray(videoFrame);
 % image = imadjust(image);
 %[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
-[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
+[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris, face_of_interest] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
 
 %% Draw the returned bounding box around the detected face.
 % videoFrameShow = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
@@ -59,7 +64,7 @@ clusters = 6;
 %% Video tracking
 % Create a point tracker and enable the bidirectional error constraint to
 % make it more robust in the presence of noise and clutter.
-pointTracker = vision.PointTracker('MaxBidirectionalError', 1, 'NumPyramidLevels', 1, 'BlockSize', [29 29]);
+pointTracker = vision.PointTracker('MaxBidirectionalError', 0, 'NumPyramidLevels', 3, 'BlockSize', [33 33]);
 
 %points = [leftEyePupil; rightEyePupil];
 greyscaleVideoFrame = rgb2gray(videoFrame);
@@ -90,6 +95,9 @@ frameCount = 1;
 % This is needed to be able to visualize the rotation of the object.
 bboxPointsLeft = [1 1; 1 1; 1 1; 1 1];
 bboxPointsRight = [1 1; 1 1; 1 1; 1 1];
+bboxLeftEye = [];
+bboxRightEye = [];
+
 if size(leftEye, 1) > 0
     bboxPointsLeft = double(bbox2points(leftEye));
     bboxLeftEye = SupportFunctions.points2bbox(bboxPointsLeft);
@@ -150,7 +158,7 @@ while ~isDone(videoFileReader)
 
     %% Recovering lost points
     if size(isFound, 1) ~= 11 || (~leftEyeTracked && ~rightEyeTracked) || (~leftBoxTracked && ~rightBoxTracked)
-        [leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
+        [leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris, face_of_interest] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters);
         disp('Recovering all the points');
         if size(leftEyePupil, 1) ~= 0 && size(rightEyePupil, 1) ~= 0 && size(leftEye, 1) ~= 0 && size(rightEye, 1) ~= 0
             bboxPointsLeft = double(bbox2points(leftEye));
@@ -182,7 +190,7 @@ while ~isDone(videoFileReader)
             retryLeftCount = retryLeftCount + 1;
         else
             %% Recover points knowing nothing
-            [leftEye, ~, leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
+            [leftEye, ~, leftEyePupil, ~, ~, ~, face_of_interest] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
             disp('Recovering Left Eye and Pupil from scratch');
             if size(leftEyePupil, 1) > 0
                 bboxPointsLeft = double(bbox2points(leftEye));
@@ -214,7 +222,7 @@ while ~isDone(videoFileReader)
             retryRightCount = retryRightCount + 1;
         else
             %%Recover points knowing nothing
-            [~, rightEye, ~, ~, rightEyePupil, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
+            [~, rightEye, ~, ~, rightEyePupil, ~, face_of_interest] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
             disp('Recovering Right Eye and Pupil from scratch');
             if size(rightEyePupil, 1) > 0
                 bboxPointsRight = double(bbox2points(rightEye));
@@ -235,7 +243,7 @@ while ~isDone(videoFileReader)
     % same stuff for the bounding boxes
     if size(isFound, 1) >= 6 && (prod(isFound(3:6)) == 0 || ~leftBoxTracked) && ~leftEyeTracked
         leftBoxTracked = false;
-        [leftEye, ~, leftEyePupil, ~, ~, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
+        [leftEye, ~, leftEyePupil, ~, ~, ~, face_of_interest] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 1);
         disp('Recovering Bounding box Left');
         if size(leftEyePupil, 1) > 0
             bboxPointsLeft = double(bbox2points(leftEye));
@@ -252,7 +260,7 @@ while ~isDone(videoFileReader)
 
     if size(isFound, 1) >= 10 && (prod(isFound(7:10)) == 0 || ~rightBoxTracked) && ~rightEyeTracked
         rightBoxTracked = false;
-        [~, rightEye, ~, ~, rightEyePupil, ~] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
+        [~, rightEye, ~, ~, rightEyePupil, ~, face_of_interest] = DetectionHelper.recoverPointsFromScratch(videoFrame, clusters, 2);
         disp('Recovering Bounding box Right');
         if size(rightEyePupil, 1) > 0
             bboxPointsRight = double(bbox2points(rightEye));
@@ -285,19 +293,19 @@ while ~isDone(videoFileReader)
         % Using Eye bounding boxes
         leftBoxCenter = mean(points(3:6, :));
         xLeftEyeBox(frameCount) = (leftBoxCenter(1) - points(1, 1)) * cos(faceAngle);
-        yLeftEyeBox(frameCount) = (leftBoxCenter(2) - points(1, 2)) * sin(faceAngle);
+        yLeftEyeBox(frameCount) = (leftBoxCenter(2) - points(1, 2)) * sin(faceAngle + pi/2);
 
         rightBoxCenter = mean(points(7:10, :));
         xRightEyeBox(frameCount) = (rightBoxCenter(1) - points(2, 1)) * cos(faceAngle);
-        yRightEyeBox(frameCount) = (rightBoxCenter(2) - points(2, 2)) * sin(faceAngle);
+        yRightEyeBox(frameCount) = (rightBoxCenter(2) - points(2, 2)) * sin(faceAngle + pi/2);
 
         %Using Point between eyes
         pupilCenter = points(11, :);
-        xLeftEyeCenter(frameCount) = abs(pupilCenter(1) - points(1, 1)) * cos(faceAngle);
-        yLeftEyeCenter(frameCount) = abs(pupilCenter(2) - points(1, 2)) * sin(faceAngle);
+        xLeftEyeCenter(frameCount) = (pupilCenter(1) - points(1, 1)) * cos(faceAngle);
+        yLeftEyeCenter(frameCount) = (pupilCenter(2) - points(1, 2)) * sin(faceAngle + pi/2);
 
-        xRightEyeCenter(frameCount) = abs(pupilCenter(1) - points(2, 1)) * cos(faceAngle);
-        yRightEyeCenter(frameCount) = abs(pupilCenter(2) - points(2, 2)) * sin(faceAngle);
+        xRightEyeCenter(frameCount) = (pupilCenter(1) - points(2, 1)) * cos(faceAngle);
+        yRightEyeCenter(frameCount) = (pupilCenter(2) - points(2, 2)) * sin(faceAngle + pi/2);
 
         disp('OK frame');
         xLeftEyeCenter(frameCount)
@@ -343,6 +351,7 @@ while ~isDone(videoFileReader)
 
         videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxLeftEye, 'Left Eye');
         videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', bboxRightEye, 'Right Eye');
+        videoFrame = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
     catch
         disp('Failed bboxes');
     end
@@ -362,6 +371,10 @@ while ~isDone(videoFileReader)
     %end
 
 %     w = waitforbuttonpress;
+
+    if frameCount > maxFrames
+        break;
+    end
 
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);
@@ -396,18 +409,63 @@ yDiffBox = yLeftEyeBox - yRightEyeBox;
 xDiffCenter = referenceDistance(1) - (xLeftEyeCenter + xRightEyeCenter);
 yDiffCenter = yLeftEyeCenter - yRightEyeCenter;
 
+pixelRange = 120;
+
 x = 1:size(xLeftEyeCenter, 1);
-figure; plot(x, xLeftEyeBox, x, yLeftEyeBox); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X BOX', 'Y BOX');
-savefig(sprintf('generated/%s_left_eye_box.fig', filename));
-figure; plot(x, xRightEyeBox, x, yRightEyeBox); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X BOX', 'Y BOX');
-savefig(sprintf('generated/%s_right_eye_box.fig', filename));
+figure;
+subplot(3, 2, 1);
+plot(x, xLeftEyeBox, x, yLeftEyeBox); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X BOX', 'Y BOX');
+axis([1 60 -pixelRange pixelRange]);
+grid on
+%savefig(sprintf('generated/%s_left_eye_box.fig', filename));
+subplot(3, 2, 2);
+plot(x, xRightEyeBox, x, yRightEyeBox); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X BOX', 'Y BOX');
+axis([1 60 -pixelRange pixelRange]);
+grid on
+%savefig(sprintf('generated/%s_right_eye_box.fig', filename));
 
-figure; plot(x, xLeftEyeCenter, x, yLeftEyeCenter); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X CENTER', 'Y CENTER');
-savefig(sprintf('generated/%s_left_eye_center.fig', filename));
-figure; plot(x, xRightEyeCenter, x, yRightEyeCenter); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X CENTER', 'Y CENTER');
-savefig(sprintf('generated/%s_right_eye_center.fig', filename));
+subplot(3, 2, 3);
+plot(x, xLeftEyeCenter, x, yLeftEyeCenter); title('Left Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X CENTER', 'Y CENTER');
+axis([1 60 -pixelRange pixelRange]);
+grid on
+%savefig(sprintf('generated/%s_left_eye_center.fig', filename));
+subplot(3, 2, 4);
+plot(x, xRightEyeCenter, x, yRightEyeCenter); title('Right Eye'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('X CENTER', 'Y CENTER');
+axis([1 60 -pixelRange pixelRange]);
+grid on
+%savefig(sprintf('generated/%s_right_eye_center.fig', filename));
 
-figure; plot(x, xDiffBox, x, yDiffBox); title('Difference BOX'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('Difference X', 'Difference Y');
-savefig(sprintf('generated/%s_diff_box.fig', filename));
-figure; plot(x, xDiffCenter, x, yDiffCenter); title('Difference CENTER'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('Difference X', 'Difference Y');
-savefig(sprintf('generated/%s_diff_center.fig', filename));
+subplot(3, 2, 5);
+plot(x, xDiffBox, x, yDiffBox); title('Difference BOX'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('Difference X', 'Difference Y');
+axis([1 60 -pixelRange pixelRange]);
+grid on
+%savefig(sprintf('generated/%s_diff_box.fig', filename));
+subplot(3, 2, 6);
+plot(x, xDiffCenter, x, yDiffCenter); title('Difference CENTER'); xlabel('Frame'); ylabel('Distance in Pixels'); legend('Difference X', 'Difference Y');
+axis([1 60 -pixelRange pixelRange]);
+grid on
+savefig(sprintf('generated/%s_charts.fig', filename));
+
+figure;
+subplot(2, 2, 1);
+scatter(xLeftEyeBox, yLeftEyeBox); title('Left Eye using BOX'); xlabel('X in pixels'); ylabel('Y in pixels');
+line(xLeftEyeBox, yLeftEyeBox,'Color','red');
+axis([-120 120 -120 120]);
+grid on
+subplot(2, 2, 2);
+scatter(xRightEyeBox, yRightEyeBox); title('Right Eye using BOX'); xlabel('X in pixels'); ylabel('Y in pixels');
+axis([-120 120 -120 120]);
+line(xRightEyeBox, yRightEyeBox,'Color','red');
+grid on
+
+subplot(2, 2, 3);
+scatter(xLeftEyeCenter, yLeftEyeCenter); title('Left Eye using CENTER'); xlabel('X in pixels'); ylabel('Y in pixels');
+axis([-120 120 -120 120]);
+line(xLeftEyeCenter, yLeftEyeCenter,'Color','red');
+grid on
+subplot(2, 2, 4);
+scatter(xRightEyeCenter, yRightEyeCenter); title('Right Eye using CENTER'); xlabel('X in pixels'); ylabel('Y in pixels');
+axis([-120 120 -120 120]);
+line(xRightEyeCenter, yRightEyeCenter,'Color','red');
+grid on
+savefig(sprintf('generated/%s_scatter.fig', filename));

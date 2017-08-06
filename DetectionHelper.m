@@ -18,8 +18,9 @@ classdef DetectionHelper
         end
         
         % eye by default(0) means both, 1 means left eye, 2 means right eye
-        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPointsFromScratch(videoFrame, clusters, eye)
+        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris, face_of_interest] = recoverPointsFromScratch(videoFrame, clusters, eye)
             successL = true; successR = true; leftEyePupil = [];
+            face_of_interest = [];
             rightEyePupil = []; leftIris = []; rightIris = [];
             leftEye = []; rightEye = [];
             if nargin < 3
@@ -27,7 +28,7 @@ classdef DetectionHelper
             end
             
             faceDetector = vision.CascadeObjectDetector();
-            eyeDetector = vision.CascadeObjectDetector('EyePairSmall', 'UseROI', true);
+            eyeDetector = vision.CascadeObjectDetector('EyePairBig', 'UseROI', true);
             leftEyeDetector = vision.CascadeObjectDetector('LeftEye', 'UseROI', true);
             rightEyeDetector = vision.CascadeObjectDetector('RightEye', 'UseROI', true);
             eyeBigDetector = vision.CascadeObjectDetector('EyePairBig', 'UseROI', true);
@@ -54,6 +55,10 @@ classdef DetectionHelper
             
             threshold = 0.3;
             
+            for i = 1:size(eyes, 1)
+                eyes(indexes(i), :) = DetectionHelper.fitFace(eyes(indexes(1), :), face_of_interest);
+            end
+            
             leftEyes = leftEyeDetector(videoFrame, eyes(indexes(1), :));
             rightEyes = rightEyeDetector(videoFrame, eyes(indexes(1), :));
             [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
@@ -66,6 +71,19 @@ classdef DetectionHelper
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
             % by using the "eyes" Bounding Box, and then picking the best box
+            nw = eyes(indexes(1), 3);
+            nh = eyes(indexes(1), 4);
+            newLeft = eyes(indexes(1), 1);
+            newTop = eyes(indexes(1), 2);
+            
+            if nw > nh
+                nw = nw/2
+                newLeft = eyes(indexes(1), 1) + nw;
+            else
+                nh = nh/2
+                newTop = eyes(indexes(1), 2) + nh;
+            end
+            
             if eye == 0 || eye == 1
                 %leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
                 %if size(leftEyes, 1) > 0
@@ -75,7 +93,12 @@ classdef DetectionHelper
                 %end
                 %m = size(leftIndexes, 2);
                 %leftEye = SupportFunctions.getRightMost(leftEyes(leftIndexes(1:min(2, m)), :));
-                leftEye = SupportFunctions.getRightMost(totalEyes);
+                %leftEye = SupportFunctions.getRightMost(totalEyes);
+                
+                tempLeftEye = [newLeft, newTop, nw, nh];
+                leftEyes = leftEyeDetector(videoFrame, tempLeftEye);
+                [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
+                leftEye = leftEyes(leftIndexes(1), :);
                 [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, leftEye, clusters, debug);
             end
             if eye == 0 || eye == 2
@@ -87,7 +110,12 @@ classdef DetectionHelper
                 %end
                 %m = size(rightIndexes, 2);
                 %rightEye = SupportFunctions.getLeftMost(rightEyes(rightIndexes(1:min(2, m)), :));
-                rightEye = SupportFunctions.getLeftMost(totalEyes);
+                %rightEye = SupportFunctions.getLeftMost(totalEyes);
+                
+                tempRightEye = [eyes(indexes(1), 1), eyes(indexes(1), 2), nw, nh];
+                rightEyes = rightEyeDetector(videoFrame, tempRightEye);
+                [~, rightIndexes] = SupportFunctions.orderDescByArea(rightEyes);
+                rightEye = rightEyes(rightIndexes(1), :);
                 [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, clusters, debug);
             end
             
@@ -99,8 +127,13 @@ classdef DetectionHelper
                 imshow(videoFrameShow);
             end
             
-            if eye == 0 && successL && successR %Only if getting both eyes
-                [successL, successR] = DetectionHelper.checkOverlap(leftEye, rightEye);
+            if eye == 0 && size(leftEye, 1) > 0 && size(rightEye, 1) > 0
+                [successL, successR, leftEye, rightEye] = DetectionHelper.checkOverlap(leftEye, rightEye);
+                if successL && successR
+                    %[leftEye, rightEye] = DetectionHelper.enlargeEyes(leftEye, rightEye);
+                    [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, leftEye, clusters, debug);
+                    [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, clusters, debug);
+                end
             end
             
             if ~successL
@@ -111,8 +144,61 @@ classdef DetectionHelper
             end
         end
         
-        function[successL, successR] = checkOverlap(leftEye, rightEye)
+        function[newEyes] = fitFace(eyes, face)
+            disp('Fitting face');
+            center = [eyes(1) + eyes(3)/2, eyes(2) + eyes(4)/2];
+            w = eyes(3);
+            h = eyes(4);
+
+            for scale = 1.0:0.05:2.0
+                nw = w * scale;
+                nh = h * scale;
+                newEyes = [center(1) - nw/2, center(2) - nh/2, nw, nh];
+                
+                if nw > face(3)
+                    break
+                end
+            end
+        end
+       
+        function[newLeftEye, newRightEye] = enlargeEyes(leftEye, rightEye)
+            newLeftEye = leftEye; newRightEye = rightEye;
+            disp('Enlarging eyes');
+            
+            leftCenter = [leftEye(1) + leftEye(3)/2, leftEye(2) + leftEye(4)/2];
+            rightCenter = [rightEye(1) + rightEye(3)/2, rightEye(2) + rightEye(4)/2];
+            leftW = leftEye(3);
+            leftH = leftEye(4);
+            rightW = rightEye(3);
+            rightH = rightEye(4);
+
+            leftEye
+            rightEye
+            leftCenter
+            rightCenter
+
+            for scale = 1.0:0.05:5.0
+                disp('in the for');
+                lnw = leftW * scale;
+                lnh = leftH * scale;
+                rnw = rightW * scale;
+                rnh = rightW * scale;
+                newLeftEye = [leftCenter(1) - lnw/2, leftCenter(2) - lnh/2, lnw, lnh];
+                newRightEye = [rightCenter(1) - rnw/2, rightCenter(2) - rnh/2, rnw, rnh];
+
+                overlap = bboxOverlapRatio(newLeftEye, newRightEye);
+                if overlap > 0
+                    newLeftEye
+                    newRightEye
+                    disp('breaking');
+                    break
+                end
+            end
+        end
+        
+        function[successL, successR, newLeftEye, newRightEye] = checkOverlap(leftEye, rightEye)
             successL = true; successR = true;
+            newLeftEye = leftEye; newRightEye = rightEye;
             
             overlap = bboxOverlapRatio(leftEye, rightEye);
             if overlap > 0
