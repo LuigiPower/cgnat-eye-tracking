@@ -2,13 +2,15 @@ clear all; close all; clc;
 
 %% Load Video file
 path = 'F:\MDS\CG\';
+path = '';
 
 % filename = 'uncharted4first';
 %filename = 'uncharted4second';
 %filename = 'badcg2';
 %filename = 'witcher';
+%filename = 'mds_project_mad';
 %filename = 'mds_project_xxx';
-%filename = 'mds_project_cose';
+filename = 'mds_project_cose';
 %filename = 'mds_project_hard';
 %filename = 'mds_project_ooo';
 %filename = 'mds_project';
@@ -18,8 +20,9 @@ path = 'F:\MDS\CG\';
 %filename = 'cg_bad';
 %filename = 'pollomega';
 %filename = 'megapollo_cg';
-filename = 'Activision R&D Real-time Character Demo-l6R6N4Vy0nE';
+%filename = 'Activision R&D Real-time Character Demo-l6R6N4Vy0nE';
 ext = '.mp4';
+ext = '.mov';
 
 videoFileReader = vision.VideoFileReader(strcat(strcat(path, filename), ext));
 videoForFrameCount = VideoReader(strcat(strcat(path, filename), ext));
@@ -30,7 +33,7 @@ totalFrameNumber = videoForFrameCount.NumberOfFrames;
 % skip 40: half iris
 % skip 60: iris on topleft corner
 % 300 470 548
-skipFrames = 300;
+skipFrames = 1;
 maxFrames = 999999;
 
 for i = 1:skipFrames

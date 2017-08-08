@@ -110,7 +110,7 @@ classdef PupilTestHelper
   
             eyeImage = imcrop(videoFrame, eyeBox);
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('cropped image');
+                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('cropped image');
             end
             
             [n, m] = size(eyeImage);
@@ -121,58 +121,127 @@ classdef PupilTestHelper
                 return;
             end
             
+            % Lavoriamo sull'immagine dell'occhio in bianco e nero per
+            % semplicita' (la pupilla dovrebbe essere la parte piu' scura)
             eyeImage = rgb2gray(eyeImage);
-            if debug
-                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('gray scale image');
-            end
           
+            % imadjust default per aggiustare la luminosita'
             eyeImage = imadjust(eyeImage);
             if debug
-                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imadjust');
+                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust default',eyeString));
             end
             
-            eyeImage = imadjust(eyeImage, [0.2 0.25], [0 1]);
+            % imadjust per mantenere solo le parti piu' scure
+            eyeImage = imadjust(eyeImage, [0.0 0.25], [0 1]);
+            %eyeImage = imadjust(eyeImage, [0.25 0.3], [0.5 1]);
+            %if debug
+            %    figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust1',eyeString));
+            %end
+            %eyeImage = imadjust(eyeImage, [0 0.05], [0 1]);
+            %if debug
+            %    figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust2',eyeString));
+            %end
+            
+            eyeImage = histeq(eyeImage);
             if debug
-                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imadjust cut');
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('histeq',eyeString));
             end
-            eyeImage = imadjust(eyeImage, [0 0.05], [0 1]);
+            eyeImage = imbinarize(eyeImage, 0.3);
             if debug
-                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust cut 2 ',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust2',eyeString));
             end
+            eyeImage = uint8(255 * eyeImage);
             
-            se = strel('line', 20, 0);
-            eyeImage = imbothat(eyeImage, se);
-            
-            eyeImage = imcomplement(eyeImage);
-            
-            se = [strel('line', 2, 90), strel('line', 2, 90)];
-            eyeImage = imdilate(eyeImage, se);
-            se = [strel('disk', 1)];
+            se = [strel('disk', 2)];
             eyeImage = imerode(eyeImage, se);
+            se = [strel('diamond', 3)];
+            eyeImage = imdilate(eyeImage, se);
             
-            eyeImage = imcomplement(eyeImage);
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imdilate',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imerode',eyeString));
             end
             
-            se = strel('disk', 2);
+            % imbothat: rimuoviamo le linee lunge circa 20 pixel
+            se = strel('line', n* 4/5, 0);
+            bothat1 = imbothat(eyeImage, se);
+            if debug
+                figure; imshow(imcomplement(bothat1), 'InitialMagnification', 'fit'); title(strcat('bothat1',eyeString));
+            end
+            
+            se = strel('line', n * 4/5, 15);
+            bothat2 = imbothat(eyeImage, se);
+            if debug
+                figure; imshow(imcomplement(bothat2), 'InitialMagnification', 'fit'); title(strcat('bothat2',eyeString));
+            end
+            
+            se = strel('line', n * 4/5, -15);
+            bothat3 = imbothat(eyeImage, se);
+            if debug
+                figure; imshow(imcomplement(bothat3), 'InitialMagnification', 'fit'); title(strcat('bothat3',eyeString));
+            end
+            
+            % il risultato di imbothat e' quello che ci aspettiamo ma con
+            % bianchi e neri invertiti: complementiamo l'immagine
+            eyeImage = imcomplement(eyeImage);
+            
+            eyeImage = imsubtract(eyeImage, imcomplement(bothat1));
+            eyeImage = imsubtract(eyeImage, imcomplement(bothat2));
+            eyeImage = imsubtract(eyeImage, imcomplement(bothat3));
+            if debug
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imsubtract',eyeString));
+            end
+            
+            % imerode per erodere utilizzando una linea verticale di due
+            % pixel come structural element (due volte per essere sicuri di
+            % rimuovere tutto tranne la pupilla)
+            se = [strel('line', 2, 90)];
+            eyeImage = imerode(eyeImage, se);
+            if debug
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imerode',eyeString));
+            end
+            
+            se = strel('disk', 1);
             toremove = imtophat(eyeImage, se);
             if debug
-                figure; imshow(toremove, 'InitialMagnification', 'fit'); title(strcat('imtophat',eyeString));
+                figure; imshow(imcomplement(toremove), 'InitialMagnification', 'fit'); title(strcat('tophat',eyeString));
             end
             
-            eyeImage = imsubtract(eyeImage, toremove);
+            % imdilate per ripristinare alcuni pixel della pupilla
+            %se = [strel('disk', 1)];
+            %eyeImage = imdilate(eyeImage, se);
+            
+            
+            %eyeImage = imcomplement(eyeImage);
+            %if debug
+            %    figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imdilate',eyeString));
+            %end
+            
+            % Creazione di una immagine che contiene solo dischi di raggio
+            % minore di 2 pixel
+            %se = strel('disk', 2);
+            %toremove = imtophat(eyeImage, se);
+            %if debug
+            %    figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('original',eyeString));
+            %    figure; imshow(toremove, 'InitialMagnification', 'fit'); title(strcat('imtophat',eyeString));
+            %end
+            
+            % Rimuoviamo tutti i dischi di raggio minore di 2 pixel
+            % all'interno dell'immagine dell'occhio
+            eyeImage = imcomplement(imsubtract(eyeImage, toremove));
+            
+            eyeImage = im2bw(eyeImage, 0.9);
+            
             if debug
                 figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('subtract',eyeString));
             end
             
             minRadius = floor(n/16);
-            maxRadius = floor(n/2);
+            maxRadius = floor(n/4);
             %minRadius
             %maxRadius
             %eyeImage
-            %[centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius],'ObjectPolarity','dark', 'Sensitivity',0.9);
-            [centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius], 'Sensitivity',0.9);
+            [centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius],'ObjectPolarity','dark', 'Sensitivity',0.9);
+            %[centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius], 'Sensitivity',0.9);
             %centers
             %radii
             

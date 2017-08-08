@@ -119,7 +119,7 @@ classdef DetectionHelper
                 [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, clusters, debug);
             end
             
-            if debug
+            if false
                 videoFrameShow = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
                 videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', eyes, 'Eyes');
                 videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', leftEyes, 'Left Eye');
