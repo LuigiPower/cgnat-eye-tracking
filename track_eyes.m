@@ -67,7 +67,7 @@ clusters = 6;
 %% Video tracking
 % Create a point tracker and enable the bidirectional error constraint to
 % make it more robust in the presence of noise and clutter.
-pointTracker = vision.PointTracker('MaxBidirectionalError', 0, 'NumPyramidLevels', 3, 'BlockSize', [33 33]);
+pointTracker = vision.PointTracker('MaxBidirectionalError', 0.2, 'NumPyramidLevels', 4, 'BlockSize', [13 13]);
 
 %points = [leftEyePupil; rightEyePupil];
 greyscaleVideoFrame = rgb2gray(videoFrame);
