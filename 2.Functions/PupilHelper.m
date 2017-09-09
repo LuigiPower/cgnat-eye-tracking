@@ -1,4 +1,4 @@
-classdef PupilTestHelper
+classdef PupilHelper
     methods (Static) 
        
         % eye by default(0) means both, 1 means left eye, 2 means right eye
@@ -60,7 +60,7 @@ classdef PupilTestHelper
                 %m = size(leftIndexes, 2);
                 %leftEye = SupportFunctions.getRightMost(leftEyes(leftIndexes(1:min(2, m)), :));
                 leftEye = SupportFunctions.getRightMost(totalEyes);
-                [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, leftEye, 'left', debug);
+                [leftEyePupil, leftIris, successL] = PupilHelper.findPupil(videoFrame, leftEye, 'left', debug);
             end
             if eye == 0 || eye == 2
                 %rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
@@ -72,7 +72,7 @@ classdef PupilTestHelper
                 %m = size(rightIndexes, 2);
                 %rightEye = SupportFunctions.getLeftMost(rightEyes(rightIndexes(1:min(2, m)), :));
                 rightEye = SupportFunctions.getLeftMost(totalEyes);
-                [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, 'right', debug);
+                [rightEyePupil, rightIris, successR] = PupilHelper.findPupil(videoFrame, rightEye, 'right', debug);
             end
             
             if debug

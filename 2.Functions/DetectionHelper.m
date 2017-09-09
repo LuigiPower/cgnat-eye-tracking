@@ -7,10 +7,10 @@ classdef DetectionHelper
             rightEyePupil = []; leftIris = []; rightIris = [];
             maxmetricL = 0; maxmetricR = 0;
             if size(bboxLeftEye, 1) ~= 0
-                [leftEyePupil, leftIris, successL, maxmetricL] = PupilTestHelper.findPupil(videoFrame, int16(bboxLeftEye), metric, false);
+                [leftEyePupil, leftIris, successL, maxmetricL] = PupilHelper.findPupil(videoFrame, int16(bboxLeftEye), metric, false);
             end
             if size(bboxRightEye, 1) ~= 0
-                [rightEyePupil, rightIris, successR, maxmetricR] = PupilTestHelper.findPupil(videoFrame, int16(bboxRightEye), metric, false);
+                [rightEyePupil, rightIris, successR, maxmetricR] = PupilHelper.findPupil(videoFrame, int16(bboxRightEye), metric, false);
             end
             metrics = [maxmetricL maxmetricR];
             if ~successL || ~successR
@@ -107,7 +107,7 @@ classdef DetectionHelper
                 if size(leftEyes, 1) > 0
                     [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
                     leftEye = leftEyes(leftIndexes(1), :);
-                    [leftEyePupil, leftIris, successL, maxmetricL] = PupilTestHelper.findPupil(videoFrame, leftEye, metric, debug);
+                    [leftEyePupil, leftIris, successL, maxmetricL] = PupilHelper.findPupil(videoFrame, leftEye, metric, debug);
                 end
             end
             if eye == 0 || eye == 2
@@ -126,7 +126,7 @@ classdef DetectionHelper
                 if size(rightEyes, 1) > 0
                     [~, rightIndexes] = SupportFunctions.orderDescByArea(rightEyes);
                     rightEye = rightEyes(rightIndexes(1), :);
-                    [rightEyePupil, rightIris, successR, maxmetricR] = PupilTestHelper.findPupil(videoFrame, rightEye, metric, debug);
+                    [rightEyePupil, rightIris, successR, maxmetricR] = PupilHelper.findPupil(videoFrame, rightEye, metric, debug);
                 end
             end
             
@@ -144,8 +144,8 @@ classdef DetectionHelper
                 [successL, successR, leftEye, rightEye] = DetectionHelper.checkOverlap(leftEye, rightEye);
                 if successL && successR
                     %[leftEye, rightEye] = DetectionHelper.enlargeEyes(leftEye, rightEye);
-                    [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, leftEye, metric, debug);
-                    [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, metric, debug);
+                    [leftEyePupil, leftIris, successL] = PupilHelper.findPupil(videoFrame, leftEye, metric, debug);
+                    [rightEyePupil, rightIris, successR] = PupilHelper.findPupil(videoFrame, rightEye, metric, debug);
                 end
             end
             
