@@ -142,10 +142,6 @@ retryLeftCount = 0;
 retryRightCount = 0;
 retryMax = 30; % TODO A second, check the framerate
 
-%% Play the video and track both eyes
-videoPlayer  = vision.VideoPlayer('Position',...
-    [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30]);
-
 %% Store output valeus
 outputValues = zeros(uint8(totalFrameNumber / maxFrames), 19);
 currentClip = 1;
@@ -153,14 +149,18 @@ goodFrames = 0;
 
 %% Compute circle metric
 foundFace = 0;
-framesToAverage = 100;
+framesToAverage = maxFrames;
 arrayometrics = zeros(framesToAverage, 2);
 metricCount = 1;
 videoForAveraging = vision.VideoFileReader(strcat(strcat(path, filename), ext));
 
-for i = 1:600
-    videoFrameAvg      = step(videoForAveraging);
-end
+%for i = 1:600
+%    videoFrameAvg      = step(videoForAveraging);
+%end
+
+%% Play the video and track both eyes
+videoPlayerAvg  = vision.VideoPlayer('Position',...
+    [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30], 'Name', 'Calculating Metrics...');
 
 while ~isDone(videoForAveraging)
     %% get the next frame
@@ -183,11 +183,17 @@ while ~isDone(videoForAveraging)
     if metricCount > framesToAverage
         break;
     end
-    %step(videoPlayer, videoFrame);
+    
+    step(videoPlayerAvg, videoFrameAvg);
 end
 averageMetrics = mean(arrayometrics);
 averageMetric = mean(averageMetrics);
-    
+closepreview
+
+%% Play the video and track both eyes
+videoPlayer  = vision.VideoPlayer('Position',...
+    [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30], 'Name', 'Tracking eyes...');
+
 %% Start the video
 while ~isDone(videoFileReader)
     %% get the next frame
@@ -464,6 +470,7 @@ while ~isDone(videoFileReader)
     % Display the annotated video frame using the video player object
     step(videoPlayer, videoFrame);
 end
+closepreview
 
 %% Remove useless frames
 frameCount = frameCount - 1;

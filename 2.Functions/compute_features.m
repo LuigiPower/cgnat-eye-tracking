@@ -1,7 +1,7 @@
 disp('showing files')
 
-path = '1.Dataset/cg/';
-sad = transpose(dir(path));
+%cgpath = '1.Dataset/cg/';
+sad = transpose(dir(cgpath));
 for file = sad
     if strcmp(file.name, '.') || strcmp(file.name, '..') || strncmp(file.name, '.', 1)
         continue;
@@ -11,13 +11,13 @@ for file = sad
     split = strsplit(file.name, '.');
     filename = split{1};
     ext = strcat('.', split{2});
-    video_class = 'cg'
+    video_class = 'cg';
     
     track_eyes
 end
 
-path = '1.Dataset/nat/';
-sad = transpose(dir(path));
+%natpath = '1.Dataset/nat/';
+sad = transpose(dir(natpath));
 for file = sad
     if strcmp(file.name, '.') || strcmp(file.name, '..') || strncmp(file.name, '.', 1)
         continue;
@@ -28,7 +28,7 @@ for file = sad
     split = strsplit(file.name, '.');
     filename = split{1};
     ext = strcat('.', split{2});
-    video_class = 'nat'
+    video_class = 'nat';
     
     track_eyes
 end

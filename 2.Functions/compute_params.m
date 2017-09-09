@@ -1,5 +1,5 @@
-cgpath = 'generated/cg/';
-natpath = 'generated/nat/';
+%cgpath = 'generated/cg/';
+%natpath = 'generated/nat/';
 
 total_samples = zeros(0, 20); % 20 are 18 features + sample validity + label
 

@@ -1,5 +1,9 @@
 per_train = 0.7;
-load('generated/samples.mat'); % loads total_samples
+
+[fname, path] = uigetfile('*.mat', 'Select a .mat file containing the Samples');
+
+%load('1.Dataset/samples.mat'); % loads total_samples
+load(strcat(path, fname));
 
 nOfSamples = size(total_samples, 1);
 nFolds = 20;
