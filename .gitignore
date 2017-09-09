@@ -20,5 +20,6 @@ octave-workspace
 
 *.mov
 *.mp4
+*.webm
 
 *.icloud
