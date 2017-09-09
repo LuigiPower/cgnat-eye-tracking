@@ -1,16 +1,18 @@
 classdef DetectionHelper
     methods (Static)
         %% Point recovery
-        function[leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPoints(videoFrame, bboxLeftEye, bboxRightEye, clusters)
+        function[leftEyePupil, leftIris, rightEyePupil, rightIris, metrics] = recoverPoints(videoFrame, bboxLeftEye, bboxRightEye, metric)
             %% Eye finding
             successL = true; successR = true; leftEyePupil = [];
             rightEyePupil = []; leftIris = []; rightIris = [];
+            maxmetricL = 0; maxmetricR = 0;
             if size(bboxLeftEye, 1) ~= 0
-                [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, int16(bboxLeftEye), clusters, false);
+                [leftEyePupil, leftIris, successL, maxmetricL] = PupilTestHelper.findPupil(videoFrame, int16(bboxLeftEye), metric, false);
             end
             if size(bboxRightEye, 1) ~= 0
-                [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, int16(bboxRightEye), clusters, false);
+                [rightEyePupil, rightIris, successR, maxmetricR] = PupilTestHelper.findPupil(videoFrame, int16(bboxRightEye), metric, false);
             end
+            metrics = [maxmetricL maxmetricR];
             if ~successL || ~successR
                 leftEyePupil = [];
                 rightEyePupil = [];
@@ -18,10 +20,11 @@ classdef DetectionHelper
         end
         
         % eye by default(0) means both, 1 means left eye, 2 means right eye
-        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris, face_of_interest] = recoverPointsFromScratch(videoFrame, clusters, eye)
+        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris, face_of_interest, metrics] = recoverPointsFromScratch(videoFrame, metric, eye)
             successL = true; successR = true; leftEyePupil = [];
             face_of_interest = [];
             rightEyePupil = []; leftIris = []; rightIris = [];
+            maxmetricL = 0; maxmetricR = 0; metrics = 0;
             leftEye = []; rightEye = [];
             if nargin < 3
                 eye = 0;
@@ -84,7 +87,7 @@ classdef DetectionHelper
                 newTop = eyes(indexes(1), 2) + nh;
             end
             
-            if eye == 0 || eye == 1
+            if (eye == 0 || eye == 1)
                 %leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
                 %if size(leftEyes, 1) > 0
                 %    leftEye = SupportFunctions.getRightMost(leftEyes);
@@ -95,11 +98,17 @@ classdef DetectionHelper
                 %leftEye = SupportFunctions.getRightMost(leftEyes(leftIndexes(1:min(2, m)), :));
                 %leftEye = SupportFunctions.getRightMost(totalEyes);
                 
+                leftEyes
+                size(leftEyes, 1)
+                size(leftEyes, 2)
+            
                 tempLeftEye = [newLeft, newTop, nw, nh];
                 leftEyes = leftEyeDetector(videoFrame, tempLeftEye);
-                [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
-                leftEye = leftEyes(leftIndexes(1), :);
-                [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, leftEye, clusters, debug);
+                if size(leftEyes, 1) > 0
+                    [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
+                    leftEye = leftEyes(leftIndexes(1), :);
+                    [leftEyePupil, leftIris, successL, maxmetricL] = PupilTestHelper.findPupil(videoFrame, leftEye, metric, debug);
+                end
             end
             if eye == 0 || eye == 2
                 %rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
@@ -114,10 +123,14 @@ classdef DetectionHelper
                 
                 tempRightEye = [eyes(indexes(1), 1), eyes(indexes(1), 2), nw, nh];
                 rightEyes = rightEyeDetector(videoFrame, tempRightEye);
-                [~, rightIndexes] = SupportFunctions.orderDescByArea(rightEyes);
-                rightEye = rightEyes(rightIndexes(1), :);
-                [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, clusters, debug);
+                if size(rightEyes, 1) > 0
+                    [~, rightIndexes] = SupportFunctions.orderDescByArea(rightEyes);
+                    rightEye = rightEyes(rightIndexes(1), :);
+                    [rightEyePupil, rightIris, successR, maxmetricR] = PupilTestHelper.findPupil(videoFrame, rightEye, metric, debug);
+                end
             end
+            
+            metrics = [maxmetricL maxmetricR];
             
             if false
                 videoFrameShow = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
@@ -131,8 +144,8 @@ classdef DetectionHelper
                 [successL, successR, leftEye, rightEye] = DetectionHelper.checkOverlap(leftEye, rightEye);
                 if successL && successR
                     %[leftEye, rightEye] = DetectionHelper.enlargeEyes(leftEye, rightEye);
-                    [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, leftEye, clusters, debug);
-                    [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, clusters, debug);
+                    [leftEyePupil, leftIris, successL] = PupilTestHelper.findPupil(videoFrame, leftEye, metric, debug);
+                    [rightEyePupil, rightIris, successR] = PupilTestHelper.findPupil(videoFrame, rightEye, metric, debug);
                 end
             end
             

@@ -95,7 +95,8 @@ classdef PupilTestHelper
             end
         end
         
-        function[eyePupil, irisResults, success] = findPupil(videoFrame, eyeBox, eyeString, debug)
+        function[eyePupil, irisResults, success, maxmetric] = findPupil(videoFrame, eyeBox, metricth, debug)
+            maxmetric = 0;
             if nargin < 4
                 debug = false;
             end
@@ -144,11 +145,11 @@ classdef PupilTestHelper
             
             eyeImage = histeq(eyeImage);
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('histeq',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('histeq');
             end
             eyeImage = imbinarize(eyeImage, 0.3);
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imadjust2',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imadjust2');
             end
             eyeImage = uint8(255 * eyeImage);
             
@@ -158,26 +159,26 @@ classdef PupilTestHelper
             eyeImage = imdilate(eyeImage, se);
             
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imerode',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imerode');
             end
             
             % imbothat: rimuoviamo le linee lunge circa 20 pixel
             se = strel('line', n* 4/5, 0);
             bothat1 = imbothat(eyeImage, se);
             if debug
-                figure; imshow(imcomplement(bothat1), 'InitialMagnification', 'fit'); title(strcat('bothat1',eyeString));
+                figure; imshow(imcomplement(bothat1), 'InitialMagnification', 'fit'); title('bothat1');
             end
             
             se = strel('line', n * 4/5, 15);
             bothat2 = imbothat(eyeImage, se);
             if debug
-                figure; imshow(imcomplement(bothat2), 'InitialMagnification', 'fit'); title(strcat('bothat2',eyeString));
+                figure; imshow(imcomplement(bothat2), 'InitialMagnification', 'fit'); title('bothat2');
             end
             
             se = strel('line', n * 4/5, -15);
             bothat3 = imbothat(eyeImage, se);
             if debug
-                figure; imshow(imcomplement(bothat3), 'InitialMagnification', 'fit'); title(strcat('bothat3',eyeString));
+                figure; imshow(imcomplement(bothat3), 'InitialMagnification', 'fit'); title('bothat3');
             end
             
             % il risultato di imbothat e' quello che ci aspettiamo ma con
@@ -188,7 +189,7 @@ classdef PupilTestHelper
             eyeImage = imsubtract(eyeImage, imcomplement(bothat2));
             eyeImage = imsubtract(eyeImage, imcomplement(bothat3));
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imsubtract',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imsubtract');
             end
             
             % imerode per erodere utilizzando una linea verticale di due
@@ -197,13 +198,13 @@ classdef PupilTestHelper
             se = [strel('line', 2, 90)];
             eyeImage = imerode(eyeImage, se);
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('imerode',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('imerode');
             end
             
             se = strel('disk', 1);
             toremove = imtophat(eyeImage, se);
             if debug
-                figure; imshow(imcomplement(toremove), 'InitialMagnification', 'fit'); title(strcat('tophat',eyeString));
+                figure; imshow(imcomplement(toremove), 'InitialMagnification', 'fit'); title('tophat');
             end
             
             % imdilate per ripristinare alcuni pixel della pupilla
@@ -232,15 +233,25 @@ classdef PupilTestHelper
             eyeImage = im2bw(eyeImage, 0.9);
             
             if debug
-                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title(strcat('subtract',eyeString));
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('subtract');
             end
             
             minRadius = floor(n/16);
             maxRadius = floor(n/4);
+            
+            minRadius
+            maxRadius
+            if minRadius <= 0 || maxRadius <= 0
+                success = false;
+                eyePupil = [];
+                irisResults = [];
+                return;
+            end
+            
             %minRadius
             %maxRadius
             %eyeImage
-            [centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius],'ObjectPolarity','dark', 'Sensitivity',0.9);
+            [centers, radii, metric] = imfindcircles(eyeImage,[minRadius maxRadius],'ObjectPolarity','dark', 'Sensitivity',0.9);
             %[centers, radii] = imfindcircles(eyeImage,[minRadius maxRadius], 'Sensitivity',0.9);
             %centers
             %radii
@@ -252,18 +263,30 @@ classdef PupilTestHelper
                 return;
             end
             [maxradius, argmradius] = max(radii);
-            maxcircle = centers(argmradius,:);
+            [maxmetric, argmmetric] = max(metric);
+            metric
+            
+            if maxmetric < metricth
+                success = false;
+                eyePupil = [];
+                irisResults = [];
+                return;
+            end
+            
+            %maxcircle = centers(argmradius,:);
+            maxcircle = centers(argmmetric,:);
+            maxradius = radii(argmmetric,:);
             
             if debug
                 h = viscircles(centers,radii);
-                h
+                %h
             end
 
             
              eyeBox = double(eyeBox);
              %eyeBox
              %maxcircle
-             eyeBox(1, 1:2)
+             %eyeBox(1, 1:2)
              eyePupil = eyeBox(1, 1:2) + maxcircle;
              %eyePupil
              %irisLeft = [eyePupil(1) - maxradius eyePupil(2)];

@@ -14,11 +14,13 @@ classdef SupportFunctions
         % Order Boxes by area descending
         function[maxarea, maxindex] = orderDescByArea(bboxes)
             [n, ~] = size(bboxes);
+            bboxes
             prods = zeros(n);
             for i = 1:n
                 prods(i) = prod(bboxes(i, 3:4));
             end
             [maxarea, maxindex] = max(prods);
+            prods
         end
         
         %% orderAscByArea
