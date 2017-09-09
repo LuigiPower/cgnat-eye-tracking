@@ -488,10 +488,6 @@ xRightEyeCenter(xRightEyeCenter == inf) = [];
 yLeftEyeCenter(yLeftEyeCenter == inf) = [];
 yRightEyeCenter(yRightEyeCenter == inf) = [];
 
-%% Folder creation
-output_path = sprintf('generated/%s_output', filename);
-mkdir(output_path);
-
 %% Plot X and Y position of both eyes
 xDiffBox = xLeftEyeBox - xRightEyeBox;
 yDiffBox = yLeftEyeBox - yRightEyeBox;
@@ -500,6 +496,16 @@ yDiffCenter = yLeftEyeCenter - yRightEyeCenter;
 
 pixelRange = 120;
 
+
+%% Folder creation
+if exist('video_class', 'var') == 0
+    return;
+end
+
+output_path = sprintf('3.Results/%s/%s_output', video_class, filename);
+mkdir(output_path);
+
+%% Save and show plots
 x = 1:size(xLeftEyeCenter, 1);
 figure;
 subplot(3, 2, 1);
@@ -559,4 +565,5 @@ line(xRightEyeCenter, yRightEyeCenter,'Color','red');
 grid on
 savefig(strcat(output_path, '/scatter.fig'));
 
+%% Save data
 save(strcat(output_path, '/features.mat'), 'outputValues');
