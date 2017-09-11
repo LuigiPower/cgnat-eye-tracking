@@ -23,3 +23,5 @@ octave-workspace
 *.webm
 
 *.icloud
+
+.DS_Store
