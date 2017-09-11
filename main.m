@@ -34,7 +34,7 @@ totalFrameNumber = videoForFrameCount.NumberOfFrames;
 % skip 60: iris on topleft corner
 % 300 470 548
 skipFrames = 1;
-maxFrames = 60; % Frames for each clip
+%maxFrames = 60; % Frames for each clip
 
 for i = 1:skipFrames
     videoFrame      = step(videoFileReader);
@@ -160,8 +160,11 @@ videoForAveraging = vision.VideoFileReader(strcat(strcat(path, filename), ext));
 
 %% Play the video and compute metrics for the circles
 % To avoid choosing low intensity circles in some videos
-videoPlayerAvg  = vision.VideoPlayer('Position',...
-    [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30], 'Name', 'Calculating Metrics...');
+
+if exist('show_video', 'var') == 1 && show_video
+    videoPlayerAvg  = vision.VideoPlayer('Position',...
+        [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30], 'Name', 'Calculating Metrics...');
+end
 
 while ~isDone(videoForAveraging)
     % get the next frame
@@ -185,15 +188,19 @@ while ~isDone(videoForAveraging)
         break;
     end
     
-    step(videoPlayerAvg, videoFrameAvg);
+    if exist('show_video', 'var') == 1 && show_video
+        step(videoPlayerAvg, videoFrameAvg);
+    end
 end
 averageMetrics = mean(arrayometrics);
 averageMetric = mean(averageMetrics);
 closepreview
 
 %% Play the video and track both eyes
-videoPlayer  = vision.VideoPlayer('Position',...
-    [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30], 'Name', 'Tracking eyes...');
+if exist('show_video', 'var') == 1 && show_video
+    videoPlayer  = vision.VideoPlayer('Position',...
+        [100 100 [size(videoFrame, 2), size(videoFrame, 1)]+30], 'Name', 'Tracking eyes...');
+end
 
 % Start the video
 while ~isDone(videoFileReader)
@@ -432,30 +439,33 @@ while ~isDone(videoFileReader)
         bound_low = frameCount - maxFrames;
         bound_up = frameCount;
         
-        box_xmean_sx = mean(xLeftEyeBox(bound_low:bound_up));
-        box_ymean_sx = mean(yLeftEyeBox(bound_low:bound_up));
+        bound_low
+        bound_up
         
-        box_xmean_dx = mean(xRightEyeBox(bound_low:bound_up));
-        box_ymean_dx = mean(yRightEyeBox(bound_low:bound_up));
+        box_xmean_sx = mean(SupportFunctions.removeinfnan(xLeftEyeBox(bound_low:bound_up)));
+        box_ymean_sx = mean(SupportFunctions.removeinfnan(yLeftEyeBox(bound_low:bound_up)));
         
-        center_xmean_sx = mean(xLeftEyeCenter(bound_low:bound_up));
-        center_ymean_sx = mean(yLeftEyeCenter(bound_low:bound_up));
+        box_xmean_dx = mean(SupportFunctions.removeinfnan(xRightEyeBox(bound_low:bound_up)));
+        box_ymean_dx = mean(SupportFunctions.removeinfnan(yRightEyeBox(bound_low:bound_up)));
         
-        center_xmean_dx = mean(xRightEyeCenter(bound_low:bound_up));
-        center_ymean_dx = mean(yRightEyeCenter(bound_low:bound_up));
+        center_xmean_sx = mean(SupportFunctions.removeinfnan(xLeftEyeCenter(bound_low:bound_up)));
+        center_ymean_sx = mean(SupportFunctions.removeinfnan(yLeftEyeCenter(bound_low:bound_up)));
+        
+        center_xmean_dx = mean(SupportFunctions.removeinfnan(xRightEyeCenter(bound_low:bound_up)));
+        center_ymean_dx = mean(SupportFunctions.removeinfnan(yRightEyeCenter(bound_low:bound_up)));
         
         
-        box_xstd_sx = std(xLeftEyeBox(bound_low:bound_up));
-        box_ystd_sx = std(yLeftEyeBox(bound_low:bound_up));
+        box_xstd_sx = std(SupportFunctions.removeinfnan(xLeftEyeBox(bound_low:bound_up)));
+        box_ystd_sx = std(SupportFunctions.removeinfnan(yLeftEyeBox(bound_low:bound_up)));
         
-        box_xstd_dx = std(xRightEyeBox(bound_low:bound_up));
-        box_ystd_dx = std(yRightEyeBox(bound_low:bound_up));
+        box_xstd_dx = std(SupportFunctions.removeinfnan(xRightEyeBox(bound_low:bound_up)));
+        box_ystd_dx = std(SupportFunctions.removeinfnan(yRightEyeBox(bound_low:bound_up)));
         
-        center_xstd_sx = std(xLeftEyeCenter(bound_low:bound_up));
-        center_ystd_sx = std(yLeftEyeCenter(bound_low:bound_up));
+        center_xstd_sx = std(SupportFunctions.removeinfnan(xLeftEyeCenter(bound_low:bound_up)));
+        center_ystd_sx = std(SupportFunctions.removeinfnan(yLeftEyeCenter(bound_low:bound_up)));
         
-        center_xstd_dx = std(xRightEyeCenter(bound_low:bound_up));
-        center_ystd_dx = std(yRightEyeCenter(bound_low:bound_up));
+        center_xstd_dx = std(SupportFunctions.removeinfnan(xRightEyeCenter(bound_low:bound_up)));
+        center_ystd_dx = std(SupportFunctions.removeinfnan(yRightEyeCenter(bound_low:bound_up)));
         
         outputValues(currentClip, 1:19) = [1, bound_low, bound_up,...
             box_xmean_sx, box_ymean_sx, box_xmean_dx, box_ymean_dx,...
@@ -468,7 +478,9 @@ while ~isDone(videoFileReader)
     end
 
     %% Display the annotated video frame using the video player object
-    step(videoPlayer, videoFrame);
+    if exist('show_video', 'var') == 1 && show_video
+        step(videoPlayer, videoFrame);
+    end
 end
 closepreview
 

@@ -1,5 +1,13 @@
 classdef SupportFunctions
     methods (Static)
+        
+        %% removeinfnan
+        % remove inf or nan from array
+        function[res] = removeinfnan(arr)
+            res = arr;
+            res(res == inf | isnan(res)) = [];
+        end
+        
         %% points2bbox
         % get bounding rectangle of a list of 4 points
         function[bbox] = points2bbox(points)

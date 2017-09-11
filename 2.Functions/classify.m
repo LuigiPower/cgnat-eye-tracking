@@ -3,6 +3,7 @@
 %load('3.Results/trained.mat'); % loads trained SVM
 load(strcat(path, fname));
 
+outputValues
 v_test = outputValues;
 test_group = v_test(:, 1);
 v_test(:, 1:3) = [];
@@ -20,6 +21,10 @@ for i = 1:size(classes, 1)
         nat = nat + 1;
     end
 end
+
+classes
+cg
+nat
 
 if cg > nat
     h = msgbox('Video is cg');

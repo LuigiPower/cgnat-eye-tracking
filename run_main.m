@@ -102,6 +102,8 @@ function pushbutton2_Callback(hObject, eventdata, handles)
 path = handles.path;
 filename = handles.filename;
 ext = handles.ext;
+show_video = true;
+maxFrames = 10;
 
 main
 classify
@@ -175,6 +177,7 @@ function runtraining_Callback(hObject, eventdata, handles)
 cgpath = handles.cg_folder;
 natpath = handles.nat_folder;
 
+maxFrames = 60;
 compute_features
 compute_params
 train

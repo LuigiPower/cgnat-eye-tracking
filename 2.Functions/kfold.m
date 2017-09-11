@@ -88,3 +88,5 @@ for  j = 1:size(kernel_functions, 2)
     f1 = (2 * precision(j) * recall(j)) / (precision(j) + recall(j));
     cl(j) = class_l ./ nFolds;
 end
+
+% View Confusion matrix and metrics
