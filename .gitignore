@@ -18,10 +18,6 @@ slprj/
 # Session info
 octave-workspace
 
-*.mov
-*.mp4
-*.webm
-
 *.icloud
 
 .DS_Store
