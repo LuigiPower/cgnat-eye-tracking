@@ -15,12 +15,14 @@ fp = zeros(size(kernel_functions, 2), 1);
 fn = zeros(size(kernel_functions, 2), 1);
 tp = zeros(size(kernel_functions, 2), 1);
 tn = zeros(size(kernel_functions, 2), 1);
+accuracy = zeros(size(kernel_functions, 2), 1);
 precision = zeros(size(kernel_functions, 2), 1);
 recall = zeros(size(kernel_functions, 2), 1);
 f1 = zeros(size(kernel_functions, 2), 1);
 cl = zeros(size(kernel_functions, 2), 1);
 
 for  j = 1:size(kernel_functions, 2)
+    disp(sprintf('running %d', j));
     sumFP = 0;
     sumFN = 0;
     sumTP = 0;
@@ -40,7 +42,8 @@ for  j = 1:size(kernel_functions, 2)
         v_test(:, 1:4) = [];
         
         %matrix_train = compute_params(v_train);
-        SVMTrain = svmtrain(v_train, group, 'kernel_function', kernel_functions{j});
+        SVMTrain = svmtrain(v_train, group, 'kernel_function', kernel_functions{j}, ...
+            'options', optimset('MaxIter', inf));
         
         [classes] = svmclassify(SVMTrain, v_test);
         
@@ -83,10 +86,12 @@ for  j = 1:size(kernel_functions, 2)
     fn(j) = sumFN ./ nFolds;
     tp(j) = sumTP ./ nFolds;
     tn(j) = sumTN ./ nFolds;
+    accuracy(j) = (tp(j) + tn(j)) / (tp(j) + tn(j) + fp(j) + fn(j));
     precision(j) = tp(j) / (tp(j) + fp(j));
     recall(j) = tp(j) / (fn(j) + tp(j));
-    f1 = (2 * precision(j) * recall(j)) / (precision(j) + recall(j));
+    f1(j) = (2 * precision(j) * recall(j)) / (precision(j) + recall(j));
     cl(j) = class_l ./ nFolds;
 end
-
+accuracy
+f1
 % View Confusion matrix and metrics
