@@ -45,7 +45,7 @@ classdef PupilHelper
             totalEyes = [leftEyes; rightEyes];
             %totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
             
-            debug = false;
+            debug = true;
             
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
@@ -111,7 +111,7 @@ classdef PupilHelper
   
             eyeImage = imcrop(videoFrame, eyeBox);
             if debug
-                %figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('cropped image');
+                figure; imshow(eyeImage, 'InitialMagnification', 'fit'); title('cropped image');
             end
             
             [n, m] = size(eyeImage);

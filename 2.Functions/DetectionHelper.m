@@ -7,10 +7,10 @@ classdef DetectionHelper
             rightEyePupil = []; leftIris = []; rightIris = [];
             maxmetricL = 0; maxmetricR = 0;
             if size(bboxLeftEye, 1) ~= 0
-                [leftEyePupil, leftIris, successL, maxmetricL] = PupilHelper.findPupil(videoFrame, int16(bboxLeftEye), metric, false);
+                [leftEyePupil, leftIris, successL, maxmetricL] = PupilHelper.findPupil(videoFrame, int16(bboxLeftEye), metric, true);
             end
             if size(bboxRightEye, 1) ~= 0
-                [rightEyePupil, rightIris, successR, maxmetricR] = PupilHelper.findPupil(videoFrame, int16(bboxRightEye), metric, false);
+                [rightEyePupil, rightIris, successR, maxmetricR] = PupilHelper.findPupil(videoFrame, int16(bboxRightEye), metric, true);
             end
             metrics = [maxmetricL maxmetricR];
             if ~successL || ~successR
@@ -69,7 +69,7 @@ classdef DetectionHelper
             totalEyes = [leftEyes; rightEyes];
             %totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
             
-            debug = false;
+            debug = true;
             
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
