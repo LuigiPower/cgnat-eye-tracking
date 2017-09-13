@@ -21,3 +21,6 @@ octave-workspace
 *.icloud
 
 .DS_Store
+
+1.Dataset/cg
+1.Dataset/nat

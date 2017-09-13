@@ -24,6 +24,10 @@
 %ext = '.mp4';
 %ext = '.mov';
 
+if exist('video_id', 'var') == 0
+    video_id = rand(1) * 10000;
+end
+
 videoFileReader = vision.VideoFileReader(strcat(strcat(path, filename), ext));
 videoForFrameCount = VideoReader(strcat(strcat(path, filename), ext));
 lastFrame = read(videoForFrameCount, inf);
@@ -521,7 +525,7 @@ if exist('video_class', 'var') == 0
     return;
 end
 
-output_path = sprintf('3.Results/%s/%s_output', video_class, filename);
+output_path = sprintf('3.Results/%s/%s_output_%d', video_class, filename, video_id);
 mkdir(output_path);
 
 %% Save and show plots

@@ -66,4 +66,9 @@ for file = sad
     end
 end
 
-save('generated/samples.mat', 'total_samples');
+
+[filename, pathname] = uiputfile('samples.mat');
+
+%save('generated/samples.mat', 'total_samples');
+save(strcat(pathname, filename), 'total_samples');
+
