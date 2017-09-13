@@ -1,11 +1,14 @@
 disp('showing files')
 
 %cgpath = '1.Dataset/cg/';
+counter = 4;
 sad = transpose(dir(cgpath));
 for file = sad
     if strcmp(file.name, '.') || strcmp(file.name, '..') || strncmp(file.name, '.', 1)
         continue;
     end
+    
+    counter = counter + 1;
     
     if file.isdir
         subsad = transpose(dir(strcat(strcat(file.folder, '/'), file.name)));
@@ -22,6 +25,7 @@ for file = sad
             filename = split{1};
             ext = strcat('.', split{2});
             video_class = 'cg';
+            video_id = counter;
            
             main
         end
@@ -33,17 +37,21 @@ for file = sad
         filename = split{1};
         ext = strcat('.', split{2});
         video_class = 'cg';
+        video_id = counter;
 
         main
     end
 end
 
 %natpath = '1.Dataset/nat/';
+counter = 4;
 sad = transpose(dir(natpath));
 for file = sad
     if strcmp(file.name, '.') || strcmp(file.name, '..') || strncmp(file.name, '.', 1)
         continue;
     end
+    
+    counter = counter + 1;
     
     if file.isdir
         subsad = transpose(dir(strcat(strcat(file.folder, '/'), file.name)));
@@ -59,6 +67,7 @@ for file = sad
             filename = split{1};
             ext = strcat('.', split{2});
             video_class = 'nat';
+            video_id = counter;
 
             main
         end
@@ -70,6 +79,7 @@ for file = sad
         filename = split{1};
         ext = strcat('.', split{2});
         video_class = 'nat';
+        video_id = counter;
 
         main
     end

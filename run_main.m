@@ -177,8 +177,10 @@ function runtraining_Callback(hObject, eventdata, handles)
 cgpath = handles.cg_folder;
 natpath = handles.nat_folder;
 
-maxFrames = 60;
+maxFrames = 10;
 compute_features
+cgpath = '3.Results\cg\';
+natpath = '3.Results\nat\';
 compute_params
 train
 
