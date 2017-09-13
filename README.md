@@ -1,3 +1,3 @@
 # CG vs NAT w/ Eye Tracking
 
-![](main_menu)
+![](main_menu.png)
