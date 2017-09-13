@@ -1,3 +1,7 @@
+%% COMPUTE_FEATURES
+%  Runs the main application to track the eyes in a video and save all the
+%  results in the Results folder.
+
 disp('showing files')
 
 %cgpath = '1.Dataset/cg/';

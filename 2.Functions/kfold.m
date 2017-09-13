@@ -1,3 +1,8 @@
+%% KFOLD
+%  Runs Kfold cross validation with a set number of 20 folds
+%  Asks the user for the mat file containing the samples on which
+%  to train and test the model
+
 per_train = 0.7;
 
 [fname, path] = uigetfile('*.mat', 'Select a .mat file containing the Samples');
@@ -13,6 +18,8 @@ kernel_functions = {'linear', 'quadratic', 'polynomial', 'rbf', 'mlp'};
 
 fp = zeros(size(kernel_functions, 2), 1);
 fn = zeros(size(kernel_functions, 2), 1);
+fpr = zeros(size(kernel_functions, 2), 1);
+fnr = zeros(size(kernel_functions, 2), 1);
 tp = zeros(size(kernel_functions, 2), 1);
 tn = zeros(size(kernel_functions, 2), 1);
 accuracy = zeros(size(kernel_functions, 2), 1);
@@ -86,12 +93,19 @@ for  j = 1:size(kernel_functions, 2)
     fn(j) = sumFN ./ nFolds;
     tp(j) = sumTP ./ nFolds;
     tn(j) = sumTN ./ nFolds;
+    fpr(j) = fp(j) / (fp(j) + tn(j));
+    fnr(j) = fn(j) / (fn(j) + tp(j));
     accuracy(j) = (tp(j) + tn(j)) / (tp(j) + tn(j) + fp(j) + fn(j));
     precision(j) = tp(j) / (tp(j) + fp(j));
     recall(j) = tp(j) / (fn(j) + tp(j));
     f1(j) = (2 * precision(j) * recall(j)) / (precision(j) + recall(j));
     cl(j) = class_l ./ nFolds;
 end
-accuracy
-f1
+
 % View Confusion matrix and metrics
+fpr
+fnr
+accuracy
+precision
+recall
+f1

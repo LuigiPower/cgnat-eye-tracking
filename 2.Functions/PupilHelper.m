@@ -1,100 +1,24 @@
+%% PUPILHELPER
+%  Class that contains helper functions for pupil detection using
+%  morphological filters
 classdef PupilHelper
     methods (Static) 
-       
-        % eye by default(0) means both, 1 means left eye, 2 means right eye
-        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPointsFromScratch(videoFrame, eye)
-            successL = true; successR = true; leftEyePupil = [];
-            rightEyePupil = []; leftIris = []; rightIris = [];
-            leftEye = []; rightEye = [];
-            if nargin < 3
-                eye = 0;
-            end
-            
-            faceDetector = vision.CascadeObjectDetector();
-            eyeDetector = vision.CascadeObjectDetector('EyePairSmall', 'UseROI', true);
-            leftEyeDetector = vision.CascadeObjectDetector('LeftEye', 'UseROI', true);
-            rightEyeDetector = vision.CascadeObjectDetector('RightEye', 'UseROI', true);
-            eyeBigDetector = vision.CascadeObjectDetector('EyePairBig', 'UseROI', true);
-            %noseDetector = vision.CascadeObjectDetector('Nose', 'UseROI', true);
-            
-            bbox = faceDetector(videoFrame);
-            [~, indexes] = SupportFunctions.orderDescByArea(bbox);
-            
-            if size(indexes, 1) == 0
-                return;
-            end
-            
-            face_of_interest = bbox(indexes(1), :);
-            eyes = eyeBigDetector(videoFrame, face_of_interest);
-            if size(eyes, 1) == 0
-                eyes = eyeDetector(videoFrame, face_of_interest);
-            end
-
-            [~, indexes] = SupportFunctions.orderDescByArea(eyes);
-            
-            if size(indexes, 1) == 0
-                return;
-            end
-            
-            threshold = 0.3;
-            
-            leftEyes = leftEyeDetector(videoFrame, eyes(indexes(1), :));
-            rightEyes = rightEyeDetector(videoFrame, eyes(indexes(1), :));
-            [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
-            [~, rightIndexes] = SupportFunctions.orderDescByArea(rightEyes);
-            totalEyes = [leftEyes; rightEyes];
-            %totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
-            
-            debug = true;
-            
-            %% Eye finding
-            % Need some processing to find the correct Left Eye and Right Eye
-            % by using the "eyes" Bounding Box, and then picking the best box
-            if eye == 0 || eye == 1
-                %leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
-                %if size(leftEyes, 1) > 0
-                %    leftEye = SupportFunctions.getRightMost(leftEyes);
-                %else
-                %    leftEye = SupportFunctions.getRightMost(rightEyes);
-                %end
-                %m = size(leftIndexes, 2);
-                %leftEye = SupportFunctions.getRightMost(leftEyes(leftIndexes(1:min(2, m)), :));
-                leftEye = SupportFunctions.getRightMost(totalEyes);
-                [leftEyePupil, leftIris, successL] = PupilHelper.findPupil(videoFrame, leftEye, 'left', debug);
-            end
-            if eye == 0 || eye == 2
-                %rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
-                %if size(rightEyes, 1) > 0
-                %    rightEye = SupportFunctions.getLeftMost(rightEyes);
-                %else
-                %    rightEye = SupportFunctions.getLeftMost(leftEyes);
-                %end
-                %m = size(rightIndexes, 2);
-                %rightEye = SupportFunctions.getLeftMost(rightEyes(rightIndexes(1:min(2, m)), :));
-                rightEye = SupportFunctions.getLeftMost(totalEyes);
-                [rightEyePupil, rightIris, successR] = PupilHelper.findPupil(videoFrame, rightEye, 'right', debug);
-            end
-            
-            if debug
-                videoFrameShow = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
-                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', eyes, 'Eyes');
-                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', leftEyes, 'Left Eye');
-                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', rightEyes, 'Right Eye');
-                imshow(videoFrameShow);
-            end
-            
-            if eye == 0 && successL && successR %Only if getting both eyes
-                [successL, successR] = DetectionHelper.checkOverlap(leftEye, rightEye);
-            end
-            
-            if ~successL
-                leftEyePupil = [];
-            end
-            if ~successR
-                rightEyePupil = [];
-            end
-        end
         
+        %% FINDPUPIL
+        %  Function used to recover all the points.
+        %  INPUT:
+        %         - videoFrame: current video frame
+        %         - eyeBox : bounding box of the eye
+        %         - metricth: threshold for circle strength
+        %         - debug: true or false, to show debugging images
+        %                   slows down everything by a lot, recommended to
+        %                   run for just a few frames if set to true
+        %  OUTPUT:
+        %         - eyePupil : Left pupil
+        %         - irisResults : Left iris
+        %         - success : true if everything ran correctly, false
+        %                       otherwise
+        %         - maxmetrics : maximum circle strength found
         function[eyePupil, irisResults, success, maxmetric] = findPupil(videoFrame, eyeBox, metricth, debug)
             maxmetric = 0;
             if nargin < 4
@@ -305,5 +229,100 @@ classdef PupilHelper
              end
         end
 
+        %% unused
+        % eye by default(0) means both, 1 means left eye, 2 means right eye
+        function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris] = recoverPointsFromScratch(videoFrame, eye)
+            successL = true; successR = true; leftEyePupil = [];
+            rightEyePupil = []; leftIris = []; rightIris = [];
+            leftEye = []; rightEye = [];
+            if nargin < 3
+                eye = 0;
+            end
+            
+            faceDetector = vision.CascadeObjectDetector();
+            eyeDetector = vision.CascadeObjectDetector('EyePairSmall', 'UseROI', true);
+            leftEyeDetector = vision.CascadeObjectDetector('LeftEye', 'UseROI', true);
+            rightEyeDetector = vision.CascadeObjectDetector('RightEye', 'UseROI', true);
+            eyeBigDetector = vision.CascadeObjectDetector('EyePairBig', 'UseROI', true);
+            %noseDetector = vision.CascadeObjectDetector('Nose', 'UseROI', true);
+            
+            bbox = faceDetector(videoFrame);
+            [~, indexes] = SupportFunctions.orderDescByArea(bbox);
+            
+            if size(indexes, 1) == 0
+                return;
+            end
+            
+            face_of_interest = bbox(indexes(1), :);
+            eyes = eyeBigDetector(videoFrame, face_of_interest);
+            if size(eyes, 1) == 0
+                eyes = eyeDetector(videoFrame, face_of_interest);
+            end
+
+            [~, indexes] = SupportFunctions.orderDescByArea(eyes);
+            
+            if size(indexes, 1) == 0
+                return;
+            end
+            
+            threshold = 0.3;
+            
+            leftEyes = leftEyeDetector(videoFrame, eyes(indexes(1), :));
+            rightEyes = rightEyeDetector(videoFrame, eyes(indexes(1), :));
+            [~, leftIndexes] = SupportFunctions.orderDescByArea(leftEyes);
+            [~, rightIndexes] = SupportFunctions.orderDescByArea(rightEyes);
+            totalEyes = [leftEyes; rightEyes];
+            %totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
+            
+            debug = false;
+            
+            %% Eye finding
+            % Need some processing to find the correct Left Eye and Right Eye
+            % by using the "eyes" Bounding Box, and then picking the best box
+            if eye == 0 || eye == 1
+                %leftEyes = SupportFunctions.removeNonIntersecting(leftEyes, eyes, threshold);
+                %if size(leftEyes, 1) > 0
+                %    leftEye = SupportFunctions.getRightMost(leftEyes);
+                %else
+                %    leftEye = SupportFunctions.getRightMost(rightEyes);
+                %end
+                %m = size(leftIndexes, 2);
+                %leftEye = SupportFunctions.getRightMost(leftEyes(leftIndexes(1:min(2, m)), :));
+                leftEye = SupportFunctions.getRightMost(totalEyes);
+                [leftEyePupil, leftIris, successL] = PupilHelper.findPupil(videoFrame, leftEye, 'left', debug);
+            end
+            if eye == 0 || eye == 2
+                %rightEyes = SupportFunctions.removeNonIntersecting(rightEyes, eyes, threshold);
+                %if size(rightEyes, 1) > 0
+                %    rightEye = SupportFunctions.getLeftMost(rightEyes);
+                %else
+                %    rightEye = SupportFunctions.getLeftMost(leftEyes);
+                %end
+                %m = size(rightIndexes, 2);
+                %rightEye = SupportFunctions.getLeftMost(rightEyes(rightIndexes(1:min(2, m)), :));
+                rightEye = SupportFunctions.getLeftMost(totalEyes);
+                [rightEyePupil, rightIris, successR] = PupilHelper.findPupil(videoFrame, rightEye, 'right', debug);
+            end
+            
+            if debug
+                videoFrameShow = insertObjectAnnotation(videoFrame, 'Rectangle', face_of_interest, 'Face');
+                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', eyes, 'Eyes');
+                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', leftEyes, 'Left Eye');
+                videoFrameShow = insertObjectAnnotation(videoFrameShow, 'Rectangle', rightEyes, 'Right Eye');
+                imshow(videoFrameShow);
+            end
+            
+            if eye == 0 && successL && successR %Only if getting both eyes
+                [successL, successR] = DetectionHelper.checkOverlap(leftEye, rightEye);
+            end
+            
+            if ~successL
+                leftEyePupil = [];
+            end
+            if ~successR
+                rightEyePupil = [];
+            end
+        end
+        
     end
 end

@@ -1,3 +1,7 @@
+%% COMPUTE_PARAMS
+%  Loads all feature files in the results folder and saves them as a single
+%  .mat file. Asks the user where to save the .mat file.
+
 %cgpath = 'generated/cg/';
 %natpath = 'generated/nat/';
 

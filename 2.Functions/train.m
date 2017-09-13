@@ -11,7 +11,7 @@ nOfSamples = size(total_samples, 1);
 group = v_train(:, 1);
 v_train(:, 1:4) = [];
 
-SVMTrain = svmtrain(v_train, group, 'kernel_function', 'polynomial');
+SVMTrain = svmtrain(v_train, group, 'kernel_function', 'rbf');
 
 [filename, pathname] = uiputfile('trained.mat');
 

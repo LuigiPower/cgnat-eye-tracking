@@ -1,16 +1,32 @@
+%% DETECTIONHELPER
+%  Class that contains helper functions to find the pupil using clusters.
+%  None of the functions that use clusters are used as the new method based
+%  on morphological filters is used. (This class calls PupilHelper)
 classdef DetectionHelper
     methods (Static)
-        %% Point recovery
+        %% RECOVERPOINTS
+        %  Function used to recover all the points.
+        %  INPUT:
+        %         - videoFrame: current video frame
+        %         - bboxLeftEye: Bounding box of the left eye
+        %         - bboxRightEye: Bounding box of the right eye
+        %         - metric: Threshold for circle strength
+        %  OUTPUT:
+        %         - leftEyePupil   : Left pupil
+        %         - leftIris   : Left iris
+        %         - rightEyePupil   : Right pupil
+        %         - rightIris   : Right iris
+        %         - metrics   : Returns all found circle strengths
         function[leftEyePupil, leftIris, rightEyePupil, rightIris, metrics] = recoverPoints(videoFrame, bboxLeftEye, bboxRightEye, metric)
             %% Eye finding
             successL = true; successR = true; leftEyePupil = [];
             rightEyePupil = []; leftIris = []; rightIris = [];
             maxmetricL = 0; maxmetricR = 0;
             if size(bboxLeftEye, 1) ~= 0
-                [leftEyePupil, leftIris, successL, maxmetricL] = PupilHelper.findPupil(videoFrame, int16(bboxLeftEye), metric, true);
+                [leftEyePupil, leftIris, successL, maxmetricL] = PupilHelper.findPupil(videoFrame, int16(bboxLeftEye), metric, false);
             end
             if size(bboxRightEye, 1) ~= 0
-                [rightEyePupil, rightIris, successR, maxmetricR] = PupilHelper.findPupil(videoFrame, int16(bboxRightEye), metric, true);
+                [rightEyePupil, rightIris, successR, maxmetricR] = PupilHelper.findPupil(videoFrame, int16(bboxRightEye), metric, false);
             end
             metrics = [maxmetricL maxmetricR];
             if ~successL || ~successR
@@ -19,7 +35,22 @@ classdef DetectionHelper
             end
         end
         
-        % eye by default(0) means both, 1 means left eye, 2 means right eye
+        %% RECOVERPOINTS
+        %  Function used to recover all the points.
+        %  INPUT:
+        %         - videoFrame: current video frame
+        %         - metric: threshold for circle strength
+        %         - eye: which eye to recover. by default(0) means both,
+        %                  1 means left eye, 2 means right eye
+        %  OUTPUT:
+        %         - leftEye : left eye bounding box
+        %         - leftEyePupil : left pupil
+        %         - leftIris : left iris
+        %         - rightEye : right eye bounding box
+        %         - rightEyePupil : right pupil
+        %         - rightIris : right iris
+        %         - face_of_interest : face bounding box
+        %         - metrics : Returns all found circle strengths
         function[leftEye, rightEye, leftEyePupil, leftIris, rightEyePupil, rightIris, face_of_interest, metrics] = recoverPointsFromScratch(videoFrame, metric, eye)
             successL = true; successR = true; leftEyePupil = [];
             face_of_interest = [];
@@ -69,7 +100,7 @@ classdef DetectionHelper
             totalEyes = [leftEyes; rightEyes];
             %totalEyes = SupportFunctions.removeNonIntersecting(totalEyes, eyes, threshold);
             
-            debug = true;
+            debug = false;
             
             %% Eye finding
             % Need some processing to find the correct Left Eye and Right Eye
@@ -157,6 +188,20 @@ classdef DetectionHelper
             end
         end
         
+        %% FITFACE
+        %  Enlarges eye box to fit the face either in width or height
+        %  INPUT:
+        %         - eyes: eyes bounding box
+        %         - face: face bounding box
+        %  OUTPUT:
+        %         - leftEye : left eye bounding box
+        %         - leftEyePupil : left pupil
+        %         - leftIris : left iris
+        %         - rightEye : right eye bounding box
+        %         - rightEyePupil : right pupil
+        %         - rightIris : right iris
+        %         - face_of_interest : face bounding box
+        %         - metrics : Returns all found circle strengths
         function[newEyes] = fitFace(eyes, face)
             disp('Fitting face');
             center = [eyes(1) + eyes(3)/2, eyes(2) + eyes(4)/2];
@@ -174,6 +219,14 @@ classdef DetectionHelper
             end
         end
        
+        %% ENLARGEEYES
+        %  Enlarges eye box to fit the face either in width or height
+        %  INPUT:
+        %         - leftEye: left eye box
+        %         - rightEye: right eye box
+        %  OUTPUT:
+        %         - newLeftEye : new left eye bounding box
+        %         - newRightEye : new right eye bounding box
         function[newLeftEye, newRightEye] = enlargeEyes(leftEye, rightEye)
             newLeftEye = leftEye; newRightEye = rightEye;
             disp('Enlarging eyes');
